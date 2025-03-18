@@ -23,7 +23,7 @@ public class ChatGPTHandler : MonoBehaviour
     [SerializeField] private ColorManager colorManager;
     // Add new field for system message
     [TextArea(5, 20)] // 最小5行，最大20行
-    [SerializeField] private string colorSystemMessage = "You are a color expert. When analyzing images, focus on suggesting color variations and improvements. Format your response as follows:\n1. Current colors: [list main colors]\n2. Suggested changes: [list specific color suggestions]\n3. Reasoning: [explain why]";
+    [SerializeField] private string customSystemMessage = "You are a color expert. When analyzing images, focus on suggesting color variations and improvements. Format your response as follows:\n1. Current colors: [list main colors]\n2. Suggested changes: [list specific color suggestions]\n3. Reasoning: [explain why]";
 
     private void Start()
     {
@@ -120,7 +120,7 @@ public class ChatGPTHandler : MonoBehaviour
                 role = "system",
                 content = new List<Content>
                 {
-                    new Content { type = "text", text = colorSystemMessage }
+                    new Content { type = "text", text = customSystemMessage }
                 }
             },
             new RequestMessage
