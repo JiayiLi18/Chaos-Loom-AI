@@ -2,27 +2,33 @@ using UnityEngine;
 using UnityEngine.Networking;
 using System.Collections;
 using System.IO;
+using Unity.VisualScripting;
 
 public class ApiClient : MonoBehaviour
 {
-    public string apiUrl = "http://localhost:8000/ask_text"; // 替换为您的 FastAPI 接口地址
+    public string apiUrl = "http://localhost:8000/ask_text"; 
+    [SerializeField] string query, imagePath;
 
-    // 调用此方法发送请求
-    public void SendRequest(string query)
+    public void OnButtionClicked()
     {
-        StartCoroutine(PostRequest(query));
+        SendRequest(query,imagePath);
     }
 
-    private IEnumerator PostRequest(string query, Texture2D image = null)
+    // 调用此方法发送请求
+    public void SendRequest(string query, string imagePath = null)
+    {
+        StartCoroutine(PostRequest(query,imagePath));//for example: "path/to/your/image.jpg"
+    }
+
+    private IEnumerator PostRequest(string query, string imagePath = null)
     {
         // 创建表单数据
         WWWForm form = new WWWForm();
         form.AddField("query", query);
 
-        if (image != null)
+        if (imagePath != null)
         {
-            byte[] imageBytes = image.EncodeToPNG();
-            form.AddBinaryData("image", imageBytes, "image.png", "image/png");
+            form.AddField("image_path", imagePath);
         }
 
         // 创建请求
