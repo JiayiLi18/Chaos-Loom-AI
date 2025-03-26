@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 4647714347376952853}
   - component: {fileID: -6881056906942177015}
   m_Layer: 0
-  m_Name: Line 1
+  m_Name: Line _1
   m_TagString: DrawnLine
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -85,6 +85,15 @@ LineRenderer:
       m_Curve:
       - serializedVersion: 3
         time: 0
+        value: 0.22618708
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.15
         value: 0.4
         inSlope: 0
         outSlope: 0
@@ -92,6 +101,24 @@ LineRenderer:
         weightedMode: 0
         inWeight: 0.33333334
         outWeight: 0.33333334
+      - serializedVersion: 3
+        time: 0.75
+        value: 0.4
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      - serializedVersion: 3
+        time: 0.90369546
+        value: 0.22619161
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4

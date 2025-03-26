@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 4647714347376952853}
   - component: {fileID: -6881056906942177015}
   m_Layer: 0
-  m_Name: Line
+  m_Name: Line _0
   m_TagString: DrawnLine
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -87,7 +87,7 @@ LineRenderer:
       m_Curve:
       - serializedVersion: 3
         time: 0
-        value: 1
+        value: 0.7319584
         inSlope: 0
         outSlope: 0
         tangentMode: 0
@@ -99,8 +99,8 @@ LineRenderer:
       m_RotationOrder: 4
     colorGradient:
       serializedVersion: 2
-      key0: {r: 0.35389245, g: 0, b: 0.7520215, a: 1}
-      key1: {r: 1, g: 0.09568727, b: 0.72614074, a: 1}
+      key0: {r: 0.4410545, g: 0.7529412, b: 0, a: 1}
+      key1: {r: 1, g: 0.9862685, b: 0, a: 1}
       key2: {r: 0, g: 0, b: 0, a: 0}
       key3: {r: 0, g: 0, b: 0, a: 0}
       key4: {r: 0, g: 0, b: 0, a: 0}

@@ -22,58 +22,62 @@ Shader "Custom/ToonGradientShader"
             "Queue" = "Geometry"
         }
 
-        // ShadowCaster Pass (完全兼容URP 14.0.11)
+        // ShadowCaster Pass
         Pass
         {
             Name "ShadowCaster"
-            Tags { "LightMode" = "ShadowCaster" }
+            Tags{"LightMode" = "ShadowCaster"}
 
-            ZWrite On
-            ZTest LEqual
-            ColorMask 0
 
             HLSLPROGRAM
             #pragma vertex ShadowPassVertex
             #pragma fragment ShadowPassFragment
+            #pragma multi_compile_shadowcaster
 
-            // 关键修复：使用最小化依赖的头文件
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
             struct Attributes
             {
-                float4 positionOS : POSITION;
+                float4 positionOS   : POSITION;
+                float3 normalOS     : NORMAL;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct Varyings
             {
-                float4 positionHCS : SV_POSITION;
-                float4 shadowCoords : TEXCOORD3;
+                float4 positionCS   : SV_POSITION;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+                UNITY_VERTEX_OUTPUT_STEREO
             };
 
-            Varyings ShadowPassVertex(Attributes IN)
+            float3 _LightDirection;
+
+            Varyings ShadowPassVertex(Attributes input)
             {
-                Varyings OUT;
-                OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
+                Varyings output;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_TRANSFER_INSTANCE_ID(input, output);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
-                // Get the VertexPositionInputs for the vertex position  
-                VertexPositionInputs positions = GetVertexPositionInputs(IN.positionOS.xyz);
+                float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
+                float3 normalWS = TransformObjectToWorldNormal(input.normalOS);
 
-                // Convert the vertex position to a position on the shadow map
-                float4 shadowCoordinates = GetShadowCoord(positions);
+                float4 positionCS = TransformWorldToHClip(ApplyShadowBias(positionWS, normalWS, _LightDirection));
 
-                // Pass the shadow coordinates to the fragment shader
-                OUT.shadowCoords = shadowCoordinates;
-                return OUT;
+                #if UNITY_REVERSED_Z
+                    positionCS.z = min(positionCS.z, UNITY_NEAR_CLIP_VALUE);
+                #else
+                    positionCS.z = max(positionCS.z, UNITY_NEAR_CLIP_VALUE);
+                #endif
+
+                output.positionCS = positionCS;
+                return output;
             }
 
-            half4 ShadowPassFragment(Varyings IN) : SV_Target
+            half4 ShadowPassFragment(Varyings input) : SV_TARGET
             {
-               // Get the value from the shadow map at the shadow coordinates
-               half shadowAmount = MainLightRealtimeShadow(IN.shadowCoords);
-
-               // Set the fragment color to the shadow value
-               return shadowAmount;
+                return 0;
             }
             ENDHLSL
         }
@@ -101,17 +105,18 @@ Shader "Custom/ToonGradientShader"
             struct Attributes
             {
                 float4 positionOS : POSITION;
-                float3 normalOS : NORMAL;
-                float2 uv : TEXCOORD0;
+                float3 normalOS :   NORMAL;
+                float2 uv :         TEXCOORD0;
             };
 
             struct Varyings
             {
                 float4 positionHCS : SV_POSITION;
-                float2 uv : TEXCOORD0;
-                float3 normalWS : TEXCOORD1;
-                float3 positionWS : TEXCOORD2;
-                float3 positionOS : TEXCOORD3;
+                float2 uv :          TEXCOORD0;
+                float3 normalWS :    TEXCOORD1;
+                float3 positionWS :  TEXCOORD2;
+                float3 positionOS :  TEXCOORD3;
+                float4 shadowCoord : TEXCOORD4;
             };
 
             sampler2D _MainTex;
@@ -133,6 +138,8 @@ Shader "Custom/ToonGradientShader"
                 OUT.normalWS = TransformObjectToWorldNormal(IN.normalOS);
                 OUT.positionWS = TransformObjectToWorld(IN.positionOS.xyz);
                 OUT.positionOS = IN.positionOS.xyz;
+                // 获取阴影坐标
+                OUT.shadowCoord = TransformWorldToShadowCoord(OUT.positionWS);
                 return OUT;
             }
 
@@ -150,27 +157,33 @@ Shader "Custom/ToonGradientShader"
                 float4 finalColor = albedo * gradientColor;
                 finalColor.a = 1.0;
 
-                // 关键修复：正确获取阴影坐标
-                float4 shadowCoord = TransformWorldToShadowCoord(IN.positionWS);
-                Light mainLight = GetMainLight(shadowCoord);
 
-                // 计算法线点积光照
-                float3 lightDir = mainLight.direction;
+                // 使用 URP 中的获取主光源的宏
+                Light mainLight = GetMainLight(IN.shadowCoord); // 获取主光源
+                float3 lightDir = normalize(mainLight.direction); // 获取光线方向
                 float NdotL = dot(IN.normalWS, lightDir);
 
                 // 硬边Toon阴影计算
-                float toonShadow = smoothstep(
+                float toonRamp = smoothstep(
                     _ShadowThreshold - _ShadowSmoothness,
                     _ShadowThreshold + _ShadowSmoothness,
                     NdotL
                 );
-                float3 shadowColor = lerp(_ShadowColor.rgb, float3(1, 1, 1), toonShadow);
-
+                // 采样投射阴影
+                float shadowAtten = 1.0;
+                #if defined(_MAIN_LIGHT_SHADOWS)
+                    shadowAtten = MainLightRealtimeShadow(IN.shadowCoord);
+                #endif
                 // 分离URP阴影衰减和Toon阴影
-                float shadowAttenuation = lerp(1.0, mainLight.shadowAttenuation, _ReceiveShadows);
+                shadowAtten = lerp(1.0, mainLight.shadowAttenuation, _ReceiveShadows);
+                shadowAtten = smoothstep(0, _ShadowSmoothness*5+0.05, shadowAtten);  // 平滑投射阴影的衰减
+                // 将自阴影（toonRamp）和投射阴影（shadowAtten）结合
+                float combinedLight = toonRamp * shadowAtten;
+
+                float3 shadowColor = lerp(_ShadowColor.rgb, float3(1, 1, 1), combinedLight);
 
                 // 最终颜色混合（确保阴影衰减和Toon阴影正确叠加）
-                finalColor.rgb *= shadowColor * shadowAttenuation * mainLight.color;
+                finalColor.rgb *= shadowColor * mainLight.color;
 
                 return finalColor;
             }

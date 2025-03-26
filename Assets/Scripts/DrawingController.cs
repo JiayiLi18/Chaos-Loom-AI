@@ -7,53 +7,168 @@ public class DrawingController : MonoBehaviour
 {
     public GameObject[] linePrefabs; // 新线条的预制件
     private LineRenderer currentLine; // 当前正在绘制的线条
+    [SerializeField] Color currentColor = Color.white; // Current color for the line
+    [SerializeField] Color selectedColor = Color.yellow; // Color for selected line
 
     private Vector3 previousPosition;
     private bool isDrawing = false;
+    private LineRenderer selectedLine = null; // 当前选中的线条
+
+    [SerializeField] bool canDraw = true;
     [SerializeField] float minDistance = 0.1f; // Minimum distance between points
     [SerializeField] float lineWidth = 0.1f; // Width of the line
+    [SerializeField] float distanceToCam = 5f; // Minimum distance between points
+    [SerializeField] int maxLineNumber = 100; //to restrict the number of lines, in case too many lines
+    [SerializeField] int lineCount = 0;
+    [SerializeField] GameObject lineParent;
 
     public AreaHandler areaHandler;
     public event Action OnDrawingStopped; // Event to notify when drawing stops
 
     void Update()
-    {
-        // 如果鼠标悬停在UI上，则不进行绘画
-        if (EventSystem.current.IsPointerOverGameObject())
+    {   //if player pick up the pencil
+        if (canDraw)
         {
-            return;
+            // 如果鼠标悬停在UI上，则不进行绘画
+            if (EventSystem.current.IsPointerOverGameObject())
+            {
+                return;
+            }
+
+            // 左键绘画
+            if (Input.GetMouseButtonDown(0)) // Start drawing
+            {
+                StartDrawing();
+            }
+            else if (Input.GetMouseButton(0)) // Continue drawing
+            {
+                ContinueDrawing();
+            }
+            else if (Input.GetMouseButtonUp(0)) // Stop drawing
+            {
+                StopDrawing();
+            }
+
+            // 右键选择和删除线条
+            if (Input.GetMouseButton(1))
+            {
+                SelectLine();
+            }
+            else if (Input.GetMouseButtonUp(1))
+            {
+                DeleteSelectedLine();
+            }
+        }
+    }
+
+    void SelectLine()
+    {
+        Vector3 mousePos = Input.mousePosition;
+        mousePos.z = distanceToCam;
+        Vector3 worldPos = Camera.main.ScreenToWorldPoint(mousePos);
+
+        // 获取所有线条
+        LineRenderer[] allLines = lineParent.GetComponentsInChildren<LineRenderer>();
+        float closestDistance = float.MaxValue;
+        LineRenderer closestLine = null;
+
+        foreach (LineRenderer line in allLines)
+        {
+            // 检查线条的每个点
+            for (int i = 0; i < line.positionCount; i++)
+            {
+                Vector3 point = line.GetPosition(i);
+                float distance = Vector3.Distance(worldPos, point);
+                
+                // 如果点距离鼠标位置小于线条宽度，认为选中了这条线
+                if (distance < lineWidth * 2)
+                {
+                    if (distance < closestDistance)
+                    {
+                        closestDistance = distance;
+                        closestLine = line;
+                    }
+                }
+            }
         }
 
-        if (Input.GetMouseButtonDown(0)) // Start drawing
+        // 如果找到了最近的线条
+        if (closestLine != null)
         {
-            StartDrawing();
+            // 检查是否超过最大选择距离
+            if (closestDistance > lineWidth * 5) // 可以调整这个倍数来改变最大选择距离
+            {
+                // 如果超过最大距离，取消选择
+                if (selectedLine != null)
+                {
+                    selectedLine.startColor = currentColor;
+                    selectedLine.endColor = currentColor;
+                    selectedLine = null;
+                }
+                return;
+            }
+
+            // 取消之前选中的线条高亮
+            if (selectedLine != null)
+            {
+                selectedLine.startColor = currentColor;
+                selectedLine.endColor = currentColor;
+            }
+            
+            // 高亮新选中的线条
+            selectedLine = closestLine;
+            selectedLine.startColor = selectedColor;
+            selectedLine.endColor = selectedColor;
         }
-        else if (Input.GetMouseButton(0)) // Continue drawing
+        else
         {
-            ContinueDrawing();
+            // 如果没有找到任何线条，取消当前选择
+            if (selectedLine != null)
+            {
+                selectedLine.startColor = currentColor;
+                selectedLine.endColor = currentColor;
+                selectedLine = null;
+            }
         }
-        else if (Input.GetMouseButtonUp(0)) // Stop drawing
+    }
+
+    void DeleteSelectedLine()
+    {
+        if (selectedLine != null)
         {
-            StopDrawing();
+            Destroy(selectedLine.gameObject);
+            lineCount--;
+            selectedLine = null;
         }
     }
 
     void StartDrawing()
     {
-        Vector2 mousePos = Input.mousePosition; // 获取鼠标的屏幕坐标
-        if (!areaHandler.IsPointInRect(mousePos))
+        // 检查是否达到最大线条数量限制
+        if (lineCount >= maxLineNumber)
+        {
+            Debug.Log("已达到最大线条数量限制！");
+            return;
+        }
+
+        /*Vector2 mousePos = Input.mousePosition; // 获取鼠标的屏幕坐标
+        if (!areaHandler.IsPointInRect(mousePos)) // 如果不在 Rect 内，则不开始新线条
         {
             Debug.Log("Mouse is not in the capture area.");
             Debug.Log(mousePos);
-            return; // 如果不在 Rect 内，则不开始新线条
-        }
+            return; 
+        }*/
 
         // 实例化一个新的线条对象
         int n = UnityEngine.Random.Range(0, linePrefabs.Length);
         GameObject linePrefab = linePrefabs[n];
-        GameObject newLine = Instantiate(linePrefab, Vector3.zero, Quaternion.identity);
+        GameObject newLine = Instantiate(linePrefab, Vector3.zero, Quaternion.identity, lineParent.transform);
         currentLine = newLine.GetComponent<LineRenderer>();
-        currentLine.startWidth = lineWidth;
+        currentLine.startWidth = lineWidth;//control the width
+        currentLine.startColor = currentColor;
+        currentLine.endColor = currentColor;
+
+        lineCount++;
 
         isDrawing = true;
         Vector3 mousePosition = GetMouseWorldPosition();
@@ -88,6 +203,7 @@ public class DrawingController : MonoBehaviour
         {
             Destroy(line);
         }
+        lineCount = 0; // 重置线条计数
     }
 
     void AddPoint(Vector3 point)
@@ -99,11 +215,25 @@ public class DrawingController : MonoBehaviour
     Vector3 GetMouseWorldPosition()
     {
         Vector3 mousePosition = Input.mousePosition;
-        mousePosition.z = 10; // Distance from the camera
-        return Camera.main.ScreenToWorldPoint(mousePosition);
+        // 将鼠标位置设置为摄像机前方固定距离
+        mousePosition.z = distanceToCam;
+        // 将屏幕坐标转换为世界坐标
+        Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
+        return worldPosition;
     }
 
-    void ConvertLineToMesh()
+    // Add new method to change color
+    public void SetLineColor(Color newColor)
+    {
+        currentColor = newColor;
+        if (currentLine != null)
+        {
+            currentLine.startColor = newColor;
+            currentLine.endColor = newColor;
+        }
+    }
+
+    /*void ConvertLineToMesh()
     {
         if (currentLine.positionCount < 2) return; // Need at least 2 points to create a line
 
@@ -126,5 +256,6 @@ public class DrawingController : MonoBehaviour
         Rigidbody rb = lineObject.AddComponent<Rigidbody>();
         rb.useGravity = false;
         rb.isKinematic = true; // Set to false if you want the line to be affected by physics
-    }
+    }*/
+
 }

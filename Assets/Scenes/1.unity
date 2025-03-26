@@ -1172,6 +1172,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   apiUrl: http://127.0.0.1:8000/ask_with_image
+  query: 
+  imagePath: 
 --- !u!114 &669335511
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1456,13 +1458,15 @@ MonoBehaviour:
     Colors)**  \r\n   - Redesign colors to fix flaws in the original palette:  \r\n    
     - State **1 clear adjustment** per color (e.g., \"darken\", \"add saturation\") 
     \r\n     - Link adjustments to design goals (e.g., \"improve readability\", \"enhance
-    mood\")  \r\n\r\n4. **Output Format**  \r\n   - Use strict JSON-like arrays with
-    name and hex keys. No markdown.  \r\n   - Example:  \r\n     \nOriginal Colors:
-    [  \r\n       { \"name\": \"Warm Plastic Orange\", \"hex\": \"#E89A6D\" },  \r\n      
-    { \"name\": \"Muted Fog Gray\", \"hex\": \"#E0E8EF\" },  \r\n       ...  \r\n    
-    ]  \r\n     Optimized Colors: [  \r\n       { \"name\": \"Vibrant Retro Orange\",
-    \"hex\": \"#F0A45A\" },  \r\n       { \"name\": \"Deep Mist Blue\", \"hex\":
-    \"#3A524A\" },  \r\n       ...  \r\n     ]"
+    mood\")  \r\n\r\n4. **Output Format**  \n   - Give a description of the current
+    image and a reason to improve the colors\r\n   - Use strict JSON-like arrays
+    with name and hex keys. No markdown.  \r\n   - Example:  \r\nDescription: \"This
+    image is a simple drawing of an apple.\"\nOriginal Colors: [  \r\n       { \"name\":
+    \"Warm Plastic Orange\", \"hex\": \"#E89A6D\" },  \r\n       { \"name\": \"Muted
+    Fog Gray\", \"hex\": \"#E0E8EF\" },  \r\n       ...  \r\n     ]  \r\n     Optimized
+    Colors: [  \r\n       { \"name\": \"Vibrant Retro Orange\", \"hex\": \"#F0A45A\"
+    },  \r\n       { \"name\": \"Deep Mist Blue\", \"hex\": \"#3A524A\" },  \r\n      
+    ...  \r\n     ]"
 --- !u!4 &917927940
 Transform:
   m_ObjectHideFlags: 0
@@ -2419,8 +2423,15 @@ MonoBehaviour:
   linePrefabs:
   - {fileID: 4367706768527632647, guid: 37eeb16b15bcae44ab3a47dab327c522, type: 3}
   - {fileID: 4367706768527632647, guid: e2cd2562e2efdfd4b98fe0c80a11e8d3, type: 3}
+  currentColor: {r: 1, g: 1, b: 1, a: 1}
+  selectedColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  canDraw: 1
   minDistance: 0.1
   lineWidth: 1
+  distanceToCam: 5
+  maxLineNumber: 100
+  lineCount: 0
+  lineParent: {fileID: 0}
   areaHandler: {fileID: 917927943}
 --- !u!114 &1469827957
 MonoBehaviour:
