@@ -44,6 +44,24 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": true
+                },
+                {
+                    ""name"": ""SwitchTool"",
+                    ""type"": ""Value"",
+                    ""id"": ""d2d77982-3a3f-432a-b011-bf078ca891ed"",
+                    ""expectedControlType"": ""Axis"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": true
+                },
+                {
+                    ""name"": ""LookLocker"",
+                    ""type"": ""Button"",
+                    ""id"": ""7ce57a0f-7453-40e4-a551-8474ed71070a"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -112,6 +130,61 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""action"": ""Look"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""37a14fea-3db0-424f-801b-0b02fa164dbe"",
+                    ""path"": ""<Mouse>/scroll/y"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""SwitchTool"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""1D Axis"",
+                    ""id"": ""b81ebd50-0c14-463e-b2a2-a19c5e734417"",
+                    ""path"": ""1DAxis"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""SwitchTool"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""negative"",
+                    ""id"": ""166ac92c-f82b-46e3-8d03-b25f6b968f62"",
+                    ""path"": ""<Keyboard>/leftBracket"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""SwitchTool"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""positive"",
+                    ""id"": ""9a2d6c73-5304-47cc-b91c-07239c340664"",
+                    ""path"": ""<Keyboard>/rightBracket"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""SwitchTool"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""5607e4b7-adc9-4dc6-8680-11212206964b"",
+                    ""path"": ""<Mouse>/middleButton"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""LookLocker"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -122,6 +195,8 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         m_Player = asset.FindActionMap("Player", throwIfNotFound: true);
         m_Player_Move = m_Player.FindAction("Move", throwIfNotFound: true);
         m_Player_Look = m_Player.FindAction("Look", throwIfNotFound: true);
+        m_Player_SwitchTool = m_Player.FindAction("SwitchTool", throwIfNotFound: true);
+        m_Player_LookLocker = m_Player.FindAction("LookLocker", throwIfNotFound: true);
     }
 
     public void Dispose()
@@ -185,12 +260,16 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
     private List<IPlayerActions> m_PlayerActionsCallbackInterfaces = new List<IPlayerActions>();
     private readonly InputAction m_Player_Move;
     private readonly InputAction m_Player_Look;
+    private readonly InputAction m_Player_SwitchTool;
+    private readonly InputAction m_Player_LookLocker;
     public struct PlayerActions
     {
         private @PlayerControls m_Wrapper;
         public PlayerActions(@PlayerControls wrapper) { m_Wrapper = wrapper; }
         public InputAction @Move => m_Wrapper.m_Player_Move;
         public InputAction @Look => m_Wrapper.m_Player_Look;
+        public InputAction @SwitchTool => m_Wrapper.m_Player_SwitchTool;
+        public InputAction @LookLocker => m_Wrapper.m_Player_LookLocker;
         public InputActionMap Get() { return m_Wrapper.m_Player; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -206,6 +285,12 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @Look.started += instance.OnLook;
             @Look.performed += instance.OnLook;
             @Look.canceled += instance.OnLook;
+            @SwitchTool.started += instance.OnSwitchTool;
+            @SwitchTool.performed += instance.OnSwitchTool;
+            @SwitchTool.canceled += instance.OnSwitchTool;
+            @LookLocker.started += instance.OnLookLocker;
+            @LookLocker.performed += instance.OnLookLocker;
+            @LookLocker.canceled += instance.OnLookLocker;
         }
 
         private void UnregisterCallbacks(IPlayerActions instance)
@@ -216,6 +301,12 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @Look.started -= instance.OnLook;
             @Look.performed -= instance.OnLook;
             @Look.canceled -= instance.OnLook;
+            @SwitchTool.started -= instance.OnSwitchTool;
+            @SwitchTool.performed -= instance.OnSwitchTool;
+            @SwitchTool.canceled -= instance.OnSwitchTool;
+            @LookLocker.started -= instance.OnLookLocker;
+            @LookLocker.performed -= instance.OnLookLocker;
+            @LookLocker.canceled -= instance.OnLookLocker;
         }
 
         public void RemoveCallbacks(IPlayerActions instance)
@@ -237,5 +328,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
     {
         void OnMove(InputAction.CallbackContext context);
         void OnLook(InputAction.CallbackContext context);
+        void OnSwitchTool(InputAction.CallbackContext context);
+        void OnLookLocker(InputAction.CallbackContext context);
     }
 }

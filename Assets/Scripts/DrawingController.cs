@@ -14,7 +14,7 @@ public class DrawingController : MonoBehaviour
     private bool isDrawing = false;
     private LineRenderer selectedLine = null; // 当前选中的线条
 
-    [SerializeField] bool canDraw = true;
+    public bool canDraw = true;
     [SerializeField] float minDistance = 0.1f; // Minimum distance between points
     [SerializeField] float lineWidth = 0.1f; // Width of the line
     [SerializeField] float distanceToCam = 5f; // Minimum distance between points
