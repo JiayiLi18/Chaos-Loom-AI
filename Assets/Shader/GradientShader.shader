@@ -2,15 +2,23 @@ Shader "Custom/ToonGradientShader"
 {
     Properties
     {
+        _MaskTexture("Mask Texture", 2D) = "black" {}
         [MainTexture] _MainTex("Albedo (RGB)", 2D) = "white" {}
+        [NormalMap] _NormalMap("Normal Map", 2D) = "bump" {}
+        _NormalMap_ST("Normal Map Tiling and Offset", Vector) = (1, 1, 0, 0) // Add this property
+        _NormalMapScale("Normal Map Scale", Range(0, 2)) = 1.0
         _ColorA("Color A", Color) = (1, 0, 0, 1)
         _ColorB("Color B", Color) = (0, 0, 1, 1)
         _GradientScale("Gradient Scale", Range(0, 2)) = 1.0
         _GradientOffset("Gradient Offset", Range(-1, 1)) = 0.0
-        _ShadowThreshold("Shadow Threshold", Range(0, 1)) = 0.5
+        _HighlightThreshold("Highlight Threshold", Range(-1, 2)) = 0.5
+        _HighlightSmoothness("Highlight Smoothness", Range(0, 1)) = 0.5
+        _ShadowThreshold("Shadow Threshold", Range(-1, 1)) = 0.5
         _ShadowSmoothness("Shadow Smoothness", Range(0, 0.2)) = 0.02
         _ShadowColor("Shadow Color", Color) = (0.2, 0.2, 0.2, 1)
+        _ShadowColor2("Shadow Color 2", Color) = (0.2, 0.2, 0.2, 1)
         [Toggle] _ReceiveShadows("Receive Shadows", Float) = 1.0
+        
     }
 
     SubShader
@@ -19,7 +27,6 @@ Shader "Custom/ToonGradientShader"
         {
             "RenderType" = "Opaque"
             "RenderPipeline" = "UniversalPipeline"
-            "Queue" = "Geometry"
         }
 
         // ShadowCaster Pass
@@ -33,6 +40,7 @@ Shader "Custom/ToonGradientShader"
             #pragma vertex ShadowPassVertex
             #pragma fragment ShadowPassFragment
             #pragma multi_compile_shadowcaster
+            #pragma multi_compile_instancing
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
@@ -82,7 +90,7 @@ Shader "Custom/ToonGradientShader"
             ENDHLSL
         }
 
-        // 主光照Pass (修复阴影混合问题)
+        // Main Lighting Pass 
         Pass
         {
             Name "ForwardLit"
@@ -94,10 +102,14 @@ Shader "Custom/ToonGradientShader"
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            // 确保启用所有阴影宏
+            // Ensure all shadow macros are enabled
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
             #pragma multi_compile _ _SHADOWS_SOFT
+            #pragma shader_feature _RECEIVE_SHADOWS
+            #pragma multi_compile _ _SHADOWMASK
+            #pragma multi_compile _ _LIGHT_LAYERS
+            #pragma multi_compile_fragment _ _SCREEN_SPACE_SHADOWS
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
@@ -106,6 +118,7 @@ Shader "Custom/ToonGradientShader"
             {
                 float4 positionOS : POSITION;
                 float3 normalOS :   NORMAL;
+                float4 tangentOS : TANGENT; // 新增Tangent输入
                 float2 uv :         TEXCOORD0;
             };
 
@@ -114,77 +127,122 @@ Shader "Custom/ToonGradientShader"
                 float4 positionHCS : SV_POSITION;
                 float2 uv :          TEXCOORD0;
                 float3 normalWS :    TEXCOORD1;
-                float3 positionWS :  TEXCOORD2;
-                float3 positionOS :  TEXCOORD3;
-                float4 shadowCoord : TEXCOORD4;
+                float3 tangentWS : TEXCOORD2;
+                float3 bitangentWS : TEXCOORD3;
+                float3 positionWS :  TEXCOORD4;
+                float4 shadowCoord : TEXCOORD5;
+                float gradient : TEXCOORD6; // 预计算渐变值
             };
+            
+            TEXTURE2D(_MaskTexture);
+            SAMPLER(sampler_MaskTexture);
+            TEXTURE2D(_MainTex);
+            SAMPLER(sampler_MainTex);
+            TEXTURE2D(_NormalMap);
+            SAMPLER(sampler_NormalMap);
 
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
-            float4 _ColorA;
-            float4 _ColorB;
-            float _GradientScale;
-            float _GradientOffset;
-            float _ShadowThreshold;
-            float _ShadowSmoothness;
-            float4 _ShadowColor;
-            float _ReceiveShadows;
+            CBUFFER_START(UnityPerMaterial)
+                float4 _MaskTexture_ST; // 平铺和偏移参数
+                float4 _MainTex_ST;
+                float4 _NormalMap_ST; 
+                float4 _ColorA;
+                float4 _ColorB;
+                float _GradientScale;
+                float _GradientOffset;
+                float _HighlightThreshold;
+                float _HighlightSmoothness;  
+                float _ShadowThreshold;
+                float _ShadowSmoothness;
+                float4 _ShadowColor;
+                float4 _ShadowColor2;
+                float _ReceiveShadows; 
+                float _NormalMapScale;
+            CBUFFER_END
+
 
             Varyings vert(Attributes IN)
             {
                 Varyings OUT;
-                OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
+                
+                VertexPositionInputs positionInputs = GetVertexPositionInputs(IN.positionOS.xyz);
+                VertexNormalInputs normalInputs = GetVertexNormalInputs(IN.normalOS, IN.tangentOS);
+
+                // 计算渐变并传递到片段着色器
+                float gradient = saturate(IN.positionOS.y * _GradientScale + _GradientOffset);
+                OUT.gradient = gradient;
+
+                OUT.positionHCS = positionInputs.positionCS;
                 OUT.uv = TRANSFORM_TEX(IN.uv, _MainTex);
-                OUT.normalWS = TransformObjectToWorldNormal(IN.normalOS);
+                OUT.normalWS = normalInputs.normalWS;
+                OUT.tangentWS = normalInputs.tangentWS;
+                OUT.bitangentWS = normalInputs.bitangentWS;
                 OUT.positionWS = TransformObjectToWorld(IN.positionOS.xyz);
-                OUT.positionOS = IN.positionOS.xyz;
-                // 获取阴影坐标
-                OUT.shadowCoord = TransformWorldToShadowCoord(OUT.positionWS);
+
+                #if defined(_MAIN_LIGHT_SHADOWS)
+                    OUT.shadowCoord = TransformWorldToShadowCoord(OUT.positionWS);
+                #else
+                    OUT.shadowCoord = GetShadowCoord(positionInputs);
+                #endif
+
                 return OUT;
             }
 
             float4 frag(Varyings IN) : SV_Target
             {
-                // 采样贴图并强制不透明
-                float4 albedo = tex2D(_MainTex, IN.uv);
+                // Sample the albedo texture and force opacity
+                float4 albedo = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.uv);
                 albedo.a = 1.0;
 
-                // 基于模型坐标的渐变
-                float gradient = saturate(IN.positionOS.y * _GradientScale + _GradientOffset);
-                float4 gradientColor = lerp(_ColorA, _ColorB, gradient);
+                // 采样法线贴图（修复1：正确UV变换）
+                float2 normalUV = TRANSFORM_TEX(IN.uv, _NormalMap);
+                float3 normalTS = UnpackNormalScale(
+                    SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, normalUV),
+                    _NormalMapScale
+                );
+    
+                float3x3 TBN = float3x3(IN.tangentWS, IN.bitangentWS, IN.normalWS);
+                float3 normalWS = normalize(mul(normalTS, TBN));
 
-                // 混合颜色
+                // 计算渐变颜色
+                float4 gradientColor = lerp(_ColorA, _ColorB, IN.gradient);
                 float4 finalColor = albedo * gradientColor;
-                finalColor.a = 1.0;
 
+                // 应用遮罩纹理
+                float4 maskData = SAMPLE_TEXTURE2D(_MaskTexture, sampler_MaskTexture, TRANSFORM_TEX(IN.uv, _MaskTexture));
+                finalColor.rgb = lerp(finalColor.rgb, maskData.rgb, maskData.a);
 
-                // 使用 URP 中的获取主光源的宏
-                Light mainLight = GetMainLight(IN.shadowCoord); // 获取主光源
-                float3 lightDir = normalize(mainLight.direction); // 获取光线方向
-                float NdotL = dot(IN.normalWS, lightDir);
+                // 获取主光源信息
+                Light mainLight = GetMainLight(IN.shadowCoord);
+                float3 lightDir = normalize(mainLight.direction);
+                float NdotL = dot(normalWS, lightDir);
 
-                // 硬边Toon阴影计算
-                float toonRamp = smoothstep(
+                // 计算Toon阴影
+                float shadowRamp = smoothstep(
                     _ShadowThreshold - _ShadowSmoothness,
                     _ShadowThreshold + _ShadowSmoothness,
                     NdotL
                 );
-                // 采样投射阴影
+                float highlightRamp = smoothstep(
+                    _HighlightThreshold - _HighlightSmoothness,
+                    _HighlightThreshold + _HighlightSmoothness,
+                    NdotL
+                );
+
+               // 阴影采样逻辑重构
                 float shadowAtten = 1.0;
-                #if defined(_MAIN_LIGHT_SHADOWS)
+                #if defined(_MAIN_LIGHT_SHADOWS) && defined(_RECEIVE_SHADOWS)
                     shadowAtten = MainLightRealtimeShadow(IN.shadowCoord);
                 #endif
+
                 // 分离URP阴影衰减和Toon阴影
                 shadowAtten = lerp(1.0, mainLight.shadowAttenuation, _ReceiveShadows);
                 shadowAtten = smoothstep(0, _ShadowSmoothness*5+0.05, shadowAtten);  // 平滑投射阴影的衰减
-                // 将自阴影（toonRamp）和投射阴影（shadowAtten）结合
-                float combinedLight = toonRamp * shadowAtten;
 
-                float3 shadowColor = lerp(_ShadowColor.rgb, float3(1, 1, 1), combinedLight);
+                // 混合阴影颜色
+                float3 shadowColor = lerp(_ShadowColor2.rgb, _ShadowColor.rgb, shadowRamp* shadowAtten);
+                shadowColor = lerp(shadowColor, float3(2, 2, 2), highlightRamp* shadowAtten);
 
-                // 最终颜色混合（确保阴影衰减和Toon阴影正确叠加）
                 finalColor.rgb *= shadowColor * mainLight.color;
-
                 return finalColor;
             }
             ENDHLSL

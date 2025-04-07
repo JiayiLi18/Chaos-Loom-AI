@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.EventSystems;
 
 public class PlayerMove : MonoBehaviour
 {
@@ -17,6 +18,7 @@ public class PlayerMove : MonoBehaviour
     private PlayerInput playerInput;
     private InputAction moveAction;
     private InputAction lookAction;
+    private InputAction JumpAction;
     private InputAction lookLockerAction;
 
     // 用于跟踪相机旋转
@@ -35,6 +37,7 @@ public class PlayerMove : MonoBehaviour
         // 获取输入动作引用
         moveAction = playerInput.actions["Move"];
         lookAction = playerInput.actions["Look"];
+        JumpAction = playerInput.actions["Jump"];
         lookLockerAction = playerInput.actions["LookLocker"];
     }
 
@@ -47,6 +50,7 @@ public class PlayerMove : MonoBehaviour
         // 启用输入动作
         moveAction.Enable();
         lookAction.Enable();
+        JumpAction.Enable();
         lookLockerAction.Enable();
     }
 
@@ -55,6 +59,7 @@ public class PlayerMove : MonoBehaviour
         // 禁用输入动作
         moveAction.Disable();
         lookAction.Disable();
+        JumpAction.Disable();
         lookLockerAction.Disable();
     }
 
@@ -89,6 +94,12 @@ public class PlayerMove : MonoBehaviour
         // 获取输入值
         moveInput = moveAction.ReadValue<Vector2>();
         mouseInput = lookAction.ReadValue<Vector2>();
+
+        // 检查跳跃输入
+        if (JumpAction.triggered && IsGrounded())
+        {
+            Jump();
+        }
     }
 
     void FixedUpdate()
@@ -97,6 +108,10 @@ public class PlayerMove : MonoBehaviour
         Move();
 
         // 处理鼠标视角
+        if (EventSystem.current.IsPointerOverGameObject())
+            {
+                return;
+            }
         HandleMouseLook();
     }
 
@@ -164,5 +179,17 @@ public class PlayerMove : MonoBehaviour
         {
             isUnlocked=false;//锁定了所以不能旋转相机
         }
+    }
+
+    private void Jump()
+    {
+        // 应用向上的力
+        rb.AddForce(Vector3.up * 5f, ForceMode.Impulse); // 5f is the jump force, adjust as needed
+    }
+
+    private bool IsGrounded()
+    {
+        // 检查玩家是否在地面上
+        return Physics.Raycast(transform.position, Vector3.down, 1.1f); // Adjust the distance as needed
     }
 }

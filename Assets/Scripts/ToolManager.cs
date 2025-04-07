@@ -21,14 +21,14 @@ public class ToolManager : MonoBehaviour
         }
 
         // 获取切换工具的输入动作
-        switchToolAction = playerInput.actions["SwitchTool"];
+        //switchToolAction = playerInput.actions["SwitchTool"];
     }
 
     private void OnEnable()
     {
         if (switchToolAction != null)
     {
-        switchToolAction.performed += OnSwitchTool; // 手动订阅事件
+        //switchToolAction.performed += OnSwitchTool; // 手动订阅事件
         switchToolAction.Enable();
     }
     }
@@ -37,7 +37,7 @@ public class ToolManager : MonoBehaviour
     {
         if (switchToolAction != null)
     {
-        switchToolAction.performed -= OnSwitchTool; // 取消订阅事件
+        //switchToolAction.performed -= OnSwitchTool; // 取消订阅事件
         switchToolAction.Disable();
     }
     }
@@ -84,7 +84,7 @@ public class ToolManager : MonoBehaviour
     }
 
     // 切换工具
-    private void SwitchTool(int index)
+    public void SwitchTool(int index)
     {
         if (currentTool != null)
         {

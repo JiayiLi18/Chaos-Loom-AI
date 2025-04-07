@@ -9,4 +9,14 @@ public class HandTool : Tool
         // 实现空手工具的功能
         Debug.Log("Using hand tool!");
     }
+
+    public override void ActivateTool()
+    {
+        base.ActivateTool();
+    }
+
+    public override void DeactivateTool()
+    {
+        base.DeactivateTool();
+    }
 }

@@ -49,7 +49,7 @@ public class ChatGPTHandler : MonoBehaviour
     public void AskChatGPT(string question, System.Action<string> onAnswerReceived)
     {
         int estimatedTokens = EstimateTokenUsage(question);
-        if (tokenTracker.CanMakeApiCall(estimatedTokens))
+        if (TokenTracker.limitReached)
         {
             StartCoroutine(SendChatGPTRequest(question, null, onAnswerReceived));
         }
@@ -211,7 +211,7 @@ public class ChatGPTHandler : MonoBehaviour
         inputTokenCount = usage.prompt_tokens;
         outputTokenCount = usage.completion_tokens;
         totalTokenCount = inputTokenCount + outputTokenCount;
-        tokenTracker.UpdateTokenUsage(totalTokenCount);
+        tokenTracker.UpdateTokenUsage(inputTokenCount, outputTokenCount);
     }
 
     [System.Serializable]

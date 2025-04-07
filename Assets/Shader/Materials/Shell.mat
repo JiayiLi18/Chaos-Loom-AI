@@ -24,18 +24,39 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _MainTex:
-        m_Texture: {fileID: 2800000, guid: 43c3579fb2266ba4c90b375c977ead3d, type: 3}
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 10, y: 10}
+        m_Offset: {x: 0, y: 0}
+    - _MaskTexture:
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MuskTex:
+        m_Texture: {fileID: 10300, guid: 0000000000000000f000000000000000, type: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _NormalMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 0.5, y: 0.5}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _GradientOffset: 0.77
+    - _GradientOffset: 0.55
     - _GradientScale: 0.747
+    - _HighlightSmoothness: 0
+    - _HighlightThreshold: 0.95
+    - _HightlightSmoothness: 0
+    - _HightlightThreshold: 0.37
+    - _NormalMapScale: 1
     - _ReceiveShadows: 0
-    - _ShadowSmoothness: 0
-    - _ShadowThreshold: 0
+    - _ShadowBiasScale: 0.01
+    - _ShadowSmoothness: 0.024
+    - _ShadowThreshold: -0
+    - _Smoothness: 0.5
     m_Colors:
-    - _ColorA: {r: 0.37049556, g: 0.899371, b: 0.72515327, a: 1}
-    - _ColorB: {r: 1, g: 1, b: 1, a: 1}
-    - _ShadowColor: {r: 0.7494758, g: 0.899371, b: 0.8838733, a: 1}
+    - _ColorA: {r: 1, g: 0.8598813, b: 0, a: 1}
+    - _ColorB: {r: 0.97304577, g: 0.9713362, b: 0.9481294, a: 1}
+    - _ShadowColor: {r: 1, g: 1, b: 1, a: 1}
+    - _ShadowColor2: {r: 0.89757407, g: 0.84526056, b: 0.6520113, a: 1}
   m_BuildTextureStacks: []
+  m_AllowLocking: 1

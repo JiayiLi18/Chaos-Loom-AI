@@ -52,10 +52,14 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 10307, guid: 0000000000000000f000000000000000, type: 0}
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MaskTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MaskTexture:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
@@ -63,9 +67,13 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    - _NormalMap:
-        m_Texture: {fileID: 0}
+    - _MuskTex:
+        m_Texture: {fileID: 10300, guid: 0000000000000000f000000000000000, type: 0}
         m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _NormalMap:
+        m_Texture: {fileID: 2800000, guid: fac65dfd974872240823ee802ac89204, type: 3}
+        m_Scale: {x: 5, y: 5}
         m_Offset: {x: 0, y: 0}
     - _OcclusionMap:
         m_Texture: {fileID: 0}
@@ -112,15 +120,21 @@ Material:
     - _Glossiness: 0
     - _GlossyReflections: 0
     - _GradientOffset: 0.386
-    - _GradientScale: 0.516
+    - _GradientScale: 1.54
+    - _HighlightSmoothness: 0
+    - _HighlightThreshold: 0.74
+    - _HightlightSmoothness: 0
+    - _HightlightThreshold: 1.17
     - _Metallic: 0
+    - _NormalMapScale: 0.201
     - _OcclusionStrength: 1
     - _Parallax: 0.005
     - _QueueOffset: 0
     - _ReceiveShadows: 0
-    - _ShadowSmoothness: 0
-    - _ShadowThreshold: 0.437
-    - _Smoothness: 0.5
+    - _ShadowBiasScale: 0.0947
+    - _ShadowSmoothness: 0.023
+    - _ShadowThreshold: 0
+    - _Smoothness: 0
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
@@ -131,11 +145,13 @@ Material:
     m_Colors:
     - _BaseColor: {r: 1, g: 0.43081754, b: 0.43081754, a: 1}
     - _Color: {r: 1, g: 0.4308175, b: 0.4308175, a: 1}
-    - _ColorA: {r: 0, g: 0.34443215, b: 0.9245283, a: 1}
+    - _ColorA: {r: 0, g: 0.3728814, b: 1, a: 1}
     - _ColorB: {r: 0.6509433, g: 1, b: 0.95013475, a: 1}
     - _EmissionColor: {r: 3.0983737, g: 1.8999459, b: 1.8999459, a: 1}
     - _Flip: {r: 1, g: 1, b: 1, a: 1}
     - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
-    - _ShadowColor: {r: 0.81695735, g: 0.91928095, b: 0.9245283, a: 1}
+    - _ShadowColor: {r: 1, g: 1, b: 1, a: 0}
+    - _ShadowColor2: {r: 0.7376472, g: 0.7715218, b: 0.9137466, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
+  m_AllowLocking: 1

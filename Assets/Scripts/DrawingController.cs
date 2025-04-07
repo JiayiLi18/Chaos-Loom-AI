@@ -2,6 +2,7 @@ using System.Collections;
 using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 public class DrawingController : MonoBehaviour
 {
@@ -17,12 +18,12 @@ public class DrawingController : MonoBehaviour
     public bool canDraw = true;
     [SerializeField] float minDistance = 0.1f; // Minimum distance between points
     [SerializeField] float lineWidth = 0.1f; // Width of the line
-    [SerializeField] float distanceToCam = 5f; // Minimum distance between points
+    [SerializeField] float distanceToCam = 1.5f;
     [SerializeField] int maxLineNumber = 100; //to restrict the number of lines, in case too many lines
     [SerializeField] int lineCount = 0;
     [SerializeField] GameObject lineParent;
 
-    public AreaHandler areaHandler;
+    public GameObject penObject;
     public event Action OnDrawingStopped; // Event to notify when drawing stops
 
     void Update()
@@ -58,6 +59,31 @@ public class DrawingController : MonoBehaviour
             {
                 DeleteSelectedLine();
             }
+
+            //Adjust distance to draw
+            if (Input.GetKey(KeyCode.Q))
+            {
+                distanceToCam += Time.deltaTime*2f;
+                distanceToCam = Math.Clamp(distanceToCam, 0.7f, 3.5f);
+            }
+            if (Input.GetKey(KeyCode.E))
+            {
+                distanceToCam -=Time.deltaTime*2f;
+                distanceToCam = Math.Clamp(distanceToCam, 0.7f, 3.5f);
+            }
+
+
+            if (penObject != null)
+            {
+                Vector3 mousePos = Input.mousePosition;
+                mousePos.z = distanceToCam;
+                Debug.Log("Mouse Position: " + mousePos);
+
+                Vector3 worldPos = Camera.main.ScreenToWorldPoint(mousePos);
+                Debug.Log("World Position: " + worldPos);
+
+                penObject.transform.position=worldPos; // 确保使用世界坐标
+            }
         }
     }
 
@@ -79,7 +105,7 @@ public class DrawingController : MonoBehaviour
             {
                 Vector3 point = line.GetPosition(i);
                 float distance = Vector3.Distance(worldPos, point);
-                
+
                 // 如果点距离鼠标位置小于线条宽度，认为选中了这条线
                 if (distance < lineWidth * 2)
                 {
@@ -114,7 +140,7 @@ public class DrawingController : MonoBehaviour
                 selectedLine.startColor = currentColor;
                 selectedLine.endColor = currentColor;
             }
-            
+
             // 高亮新选中的线条
             selectedLine = closestLine;
             selectedLine.startColor = selectedColor;
