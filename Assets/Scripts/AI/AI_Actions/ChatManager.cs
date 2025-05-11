@@ -38,7 +38,7 @@ public class ChatManager : MonoBehaviour
         {
             if(currentChatMessage != null)
             {
-                currentChatMessage.text = message;
+                currentChatMessage.text = message;//待修改，需要区分显示聊天的信息和行动
             }
             // 生成他人消息
             CreateMessage(message, false);

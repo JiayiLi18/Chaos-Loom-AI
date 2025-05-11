@@ -190,6 +190,6 @@ public class PlayerMove : MonoBehaviour
     private bool IsGrounded()
     {
         // 检查玩家是否在地面上
-        return Physics.Raycast(transform.position, Vector3.down, 1.1f); // Adjust the distance as needed
+        return Physics.Raycast(transform.position, Vector3.down, 10f); // Adjust the distance as needed
     }
 }

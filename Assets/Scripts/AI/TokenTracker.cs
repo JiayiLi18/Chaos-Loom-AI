@@ -18,14 +18,6 @@ public class TokenTracker : MonoBehaviour
 
     void Start() => ResetTokenCountIfNewDay();
 
-    // 新版更新方法（使用ParsedMessage结构体）
-    public void UpdateTokenUsage(ParsedMessage message)
-    {
-        if (!message.IsValid) return;
-
-        UpdateTokenUsage(message.promptTokens, message.completionTokens);
-    }
-
     // 基础更新方法（兼容新旧系统）
     public void UpdateTokenUsage(int promptTokens, int completionTokens)
     {
@@ -51,13 +43,6 @@ public class TokenTracker : MonoBehaviour
             // 这里可以触发UI警告或禁用API调用
             limitReached = true;
         }
-    }
-
-    // 带详细预测的API调用检查
-    public bool CanMakeApiCall(int estimatedPromptTokens, int estimatedCompletionTokens)
-    {
-        int projectedTotal = totalTokensUsedToday + estimatedPromptTokens + estimatedCompletionTokens;
-        return projectedTotal <= dailyTokenLimit;
     }
 
     // 增强版日期重置检查

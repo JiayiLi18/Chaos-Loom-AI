@@ -5986,6 +5986,7 @@ GameObject:
   - component: {fileID: 1802785764}
   - component: {fileID: 1802785763}
   - component: {fileID: 1802785767}
+  - component: {fileID: 1802785768}
   - component: {fileID: 1802785766}
   m_Layer: 0
   m_Name: ToolManager
@@ -6133,6 +6134,24 @@ MonoBehaviour:
   normalColor: {r: 0.7137255, g: 0.7137255, b: 0.7137255, a: 1}
   toolObject: {fileID: 888291089}
   mousePainter: {fileID: 1073858881}
+--- !u!114 &1802785768
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1802785761}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 87a8917fb3d8744439e9545ced2bcfad, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  toolName: Take Picture
+  uiButton: {fileID: 170164784}
+  selectedColor: {r: 0, g: 0, b: 0, a: 1}
+  normalColor: {r: 0.7137255, g: 0.7137255, b: 0.7137255, a: 1}
+  toolObject: {fileID: 663629743}
+  TakePicsUI: {fileID: 898217679}
 --- !u!1 &1812286482
 GameObject:
   m_ObjectHideFlags: 0
