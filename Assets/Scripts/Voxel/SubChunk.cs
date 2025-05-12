@@ -39,7 +39,7 @@ namespace Voxels
         private NativeList<Vector2> _uvs1;
 
         private NativeArray<Color32> _palette;//baseColor
-        private NativeArray<float> _slices;//slice indices
+        private NativeArray<int> _texIndex;//texture index
         #endregion
 
         private void Awake()
@@ -69,7 +69,7 @@ namespace Voxels
             if (_palette.IsCreated) _palette.Dispose();
             if (_uvs.IsCreated) _uvs.Dispose();
             if (_uvs1.IsCreated) _uvs1.Dispose();
-            if (_slices.IsCreated) _slices.Dispose();
+            if (_texIndex.IsCreated) _texIndex.Dispose();
         }
 
         void OnEnable() => VoxelRegistry.OnRegistryChanged += MarkDirtyAll;
@@ -118,19 +118,19 @@ namespace Voxels
             // Build palette (TempJob lifetime → auto‑dispose after job)
             int count = VoxelRegistry.Count;
             _palette = new NativeArray<Color32>(count, Allocator.Persistent);
-            _slices = new NativeArray<float>(count, Allocator.Persistent);
+            _texIndex = new NativeArray<int>(count, Allocator.Persistent);
             for (ushort i = 0; i < count; i++)
             {
                 var def = VoxelRegistry.GetDefinition(i);
                 _palette[i] = def ? def.baseColor : new Color32(255, 255, 255, 255);
-                _slices[i] = def ? def.sliceIndex : 0f;
+                _texIndex[i] = def ? def.textureIndex : 0;
             }
 
             var job = new GreedyMeshJob
             {
                 voxels = _voxelsNative,
                 palette = _palette,
-                slices = _slices,
+                texIndex = _texIndex,
                 vertices = _verts,
                 triangles = _tris,
                 colors = _cols,
@@ -156,7 +156,7 @@ namespace Voxels
 
             // Job 用完才能安全 Dispose
             _palette.Dispose();
-            _slices.Dispose();
+            _texIndex.Dispose();
         }
         #endregion
 

@@ -17,7 +17,7 @@ namespace Voxels
         // ────────── Inputs ──────────
         [ReadOnly] public NativeArray<Voxel> voxels;   // length = SubChunk.Size³
         [ReadOnly] public NativeArray<Color32> palette;  // typeId → base colour
-        [ReadOnly] public NativeArray<float> slices;   // typeId → texture slice index
+        [ReadOnly] public NativeArray<int> texIndex;   // typeId → texture index
 
         // ────────── Outputs ─────────
         public NativeList<float3> vertices;
@@ -192,12 +192,12 @@ namespace Voxels
 
 
                 // UV1.x = slice index (same per‑quad)
-                float slice = 0f; // 默认值
-                if (id < slices.Length)
+                int index = 0; // 默认值
+                if (id < texIndex.Length)
                 {
-                    slice = slices[id];
+                    index = texIndex[id];
                 }
-                Vector2 s = new Vector2(slice, 0);
+                Vector2 s = new Vector2(index, 0);
                 for (int k = 0; k < 4; ++k) uvs1.Add(s);
 
                 // zero out consumed mask area

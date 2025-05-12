@@ -12,13 +12,6 @@ namespace Voxels
     /// 2. 维护所有已注册 VoxelDefinition 的全局列表和查找字典
     /// 3. 提供通过 typeId 查找对应 VoxelDefinition 的方法 (GetDefinition)
     /// 4. 支持运行时动态注册新的体素类型
-    /// 5. 确保所有体素定义的资源（如纹理）被正确加载
-    /// 
-    /// 与其他组件的关系：
-    /// - 依赖 TextureLibrary：订阅 TextureLibrary.OnLibraryInitialized 事件以确保在纹理库初始化后再加载体素定义
-    /// - 被 Voxel 结构体依赖：Voxel 通过 typeId 从此注册表查找完整的 VoxelDefinition
-    /// 
-    /// 执行顺序：设置为 DefaultExecutionOrder(1000)，确保在 TextureLibrary (-1000) 之后初始化
     /// </summary>
     [DefaultExecutionOrder(1000)] // Ensure this runs after TextureLibrary (which has -1000)
     public static class VoxelRegistry
@@ -61,16 +54,8 @@ namespace Voxels
             ushort id = (ushort)s_Definitions.Count; // sequential; 0 reserved for Air
             def.typeId = id;
 
-            // ✅ 注册贴图
-            if (def.texture != null)
-            {
-                def.UpdateTextureIfNeeded();
-                Debug.Log($"Registered voxel '{def.name}' with texture '{def.texture.name}' at index {def.sliceIndex}");
-            }
-            else
-            {
-                Debug.LogWarning($"Voxel '{def.name}' has no texture assigned!");
-            }
+            // 不再需要注册贴图，使用预设的textureX和textureY
+            Debug.Log($"Registered voxel '{def.name}' with texture coordinates ({def.textureIndex})");
 
             s_Definitions.Add(def);
             s_IdByName[def.name] = id;
@@ -144,6 +129,7 @@ namespace Voxels
                 air.description = "Air";
                 air.isTransparent = true;
                 air.baseColor = new Color32(0, 0, 0, 0);
+                air.textureIndex = 0;
                 Register(air); // becomes ID 0
             }
         }
