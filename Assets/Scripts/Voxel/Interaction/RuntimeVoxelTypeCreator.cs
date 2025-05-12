@@ -94,7 +94,7 @@ public class RuntimeVoxelTypeCreator : MonoBehaviour
         def.name = $"RuntimeVoxel_{VoxelRegistry.Count}";   // make sure the name is not the same
         def.displayName = name;
         def.baseColor = baseColor;
-        def.textureIndex = 0;
+        def.texture = null;
 
         ushort newId = VoxelRegistry.Register(def);
         Debug.Log($"🆕 Created Voxel id={newId}");
@@ -109,7 +109,7 @@ public class RuntimeVoxelTypeCreator : MonoBehaviour
         def.name = $"RuntimeVoxel_{VoxelRegistry.Count}";   // make sure the name is not the same
         def.displayName = name;
         def.baseColor = baseColor;
-        def.textureIndex = 0;
+        def.texture = texture;  // 设置贴图
 
         ushort newId = VoxelRegistry.Register(def);
         Debug.Log($"🆕 Created Voxel id={newId} with texture: {(texture != null ? texture.name : "none")}");

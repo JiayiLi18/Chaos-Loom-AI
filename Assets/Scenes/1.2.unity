@@ -4465,8 +4465,9 @@ MonoBehaviour:
   apiUrl_General: http://127.0.0.1:8000/ask_general
   apiUrl_Texture: http://127.0.0.1:8000/generate_texture
   query: Hi
-  tex_name: 
-  pprompt: 
+  tex_name: Sea
+  pprompt: Texture of sea
+  denoise: 
   screenshotPath: C:\Aalto\S4\Graduation\AI-Agent\Assets\Screenshots\Screenshot.jpg
   textureReferencePath: 
   commandProcessorReference: {fileID: 917927943}
@@ -5788,7 +5789,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 65
+  field of view: 50
   orthographic: 0
   orthographic size: 20
   m_Depth: 0
@@ -7604,7 +7605,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1493791519}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 917927941}
+        m_TargetAssemblyTypeName: ApiClient, Assembly-CSharp
+        m_MethodName: OnGenerateTextureRequest
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1493791519
 MonoBehaviour:
   m_ObjectHideFlags: 0

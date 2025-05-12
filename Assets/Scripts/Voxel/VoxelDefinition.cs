@@ -7,8 +7,9 @@ namespace Voxels
     /// 
     /// 核心职责：
     /// 1. 存储体素的基本属性（名称、描述、颜色等）
-    /// 2. 管理体素在texture sheet上的位置(textureIndex)
-    /// 3. 提供纹理初始化方法
+    /// 2. 管理体素的纹理资源，并与 TextureLibrary 交互
+    /// 3. 维护体素在 TextureLibrary 中的纹理索引（sliceIndex）
+    /// 4. 提供纹理更新和初始化方法
     /// 
     /// 与其他组件的关系：
     /// - 依赖 TextureLibrary：通过 UpdateTextureIfNeeded 方法注册纹理并获取 sliceIndex
@@ -28,15 +29,50 @@ namespace Voxels
 
         [Tooltip("Base albedo tint; meshes will multiply vertex colour with this.")]
         public Color32 baseColor = Color.white;
-        
+        public Texture2D texture;
+
         [Tooltip("True if the voxel should be considered transparent when rendering / ray‑casting.")]
         public bool isTransparent = false;
 
         /// <summary>Automatically filled in by <see cref="VoxelRegistry"/> when registered.</summary>
         [HideInInspector] public ushort typeId;
-        
-        [Tooltip("Texture index in the texture sheet")]
-        public int textureIndex = 0;
+        //[HideInInspector]
+        public int sliceIndex = -1;   // 从 TextureLibrary 来的贴图编号，之后可以更新为每个面都有单独编号
+        //public bool textureNeedsUpdate = false; // 标记贴图是否需要更新
 
+        public void InitRuntime(Texture2D tex)
+        {
+            if (tex != null)
+            {
+                texture = tex;
+                UpdateTextureIfNeeded();
+            }
+        }
+
+        // 合并后的更新贴图方法，处理注册和更新
+        public void UpdateTextureIfNeeded()
+        {
+            if (texture != null)
+            {
+                if (TextureLibrary.IsInitialized)
+                {
+                    // 尝试使用安全的注册方法
+                    int newIndex = TextureLibrary.SafeRegister(texture);
+                    if (newIndex >= 0)
+                    {
+                        sliceIndex = newIndex;
+                        Debug.Log($"VoxelDefinition '{name}': updated texture index to {sliceIndex}");
+                    }
+                }
+                else
+                {
+                    Debug.LogError("[VoxelDefinition] TextureLibrary is not initialized, update texture failed!");
+                }
+            }
+            else
+            {
+                sliceIndex = 0;
+            }
+        }
     }
 }

@@ -17,7 +17,7 @@ MonoBehaviour:
   baseColor:
     serializedVersion: 2
     rgba: 4294967295
-  texture: {fileID: 2800000, guid: 3f64a4b1a0a2888468d4e0a036428e36, type: 3}
+  texture: {fileID: 0}
   isTransparent: 0
-  typeId: 3
-  sliceIndex: 3
+  typeId: 5
+  sliceIndex: -1

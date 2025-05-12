@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Voxel_Default_Mat
-  m_Shader: {fileID: -6465566751694194690, guid: 3908a262aad0f024886b4a385d655cb6,
+  m_Shader: {fileID: -6465566751694194690, guid: fdbb045e4993c8d4b9e97d9cf666e168,
     type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -87,10 +87,6 @@ Material:
         m_Offset: {x: 0, y: 0}
     - _SampleTexture2D_a66aad398ade4026b7f40360c1845016_Texture_1_Texture2D:
         m_Texture: {fileID: 2800000, guid: ad9d5a8bd2075234fa8945012bdab5a8, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _Sheet:
-        m_Texture: {fileID: 2800000, guid: 9fed8297169c44b4e8b6766a5102787c, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _SpecGlossMap:
