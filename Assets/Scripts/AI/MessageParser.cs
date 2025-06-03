@@ -4,12 +4,40 @@ using System.Text.RegularExpressions;
 [System.Serializable]
 public struct ParsedMessage
 {
-    public string cleanAnswer;
-    public int promptTokens;
-    public int completionTokens;
-    public int totalTokens;
-    
-    public bool IsValid => !string.IsNullOrEmpty(cleanAnswer);
+    public string answer;
+    public TextureCommand texture;
+    public VoxelCommand voxel;
+    public DatabaseCommand database;
+    public bool IsValid => !string.IsNullOrEmpty(answer);
+}
+
+[System.Serializable]
+public struct TextureCommand
+{
+    public bool executed;
+    public bool success;
+    public string texture_path;
+    public string error;
+}
+
+[System.Serializable]
+public struct VoxelCommand
+{
+    public bool executed;
+    public bool success;
+    public int voxel_id;
+    public string voxel_name;
+    public string texture_path;
+    public string error;
+}
+
+[System.Serializable]
+public struct DatabaseCommand
+{
+    public bool executed;
+    public bool success;
+    public string section;
+    public string error;
 }
 
 public static class MessageParser 
@@ -19,62 +47,60 @@ public static class MessageParser
         try 
         {
             // 反序列化基础结构
-            var baseData = JsonUtility.FromJson<BaseChatData>(jsonString);
+            var baseData = JsonUtility.FromJson<ResponseData>(jsonString);
             
+            if (!baseData.success || baseData.data == null)
+            {
+                Debug.LogError($"Response indicates failure or null data: {baseData.error}");
+                return new ParsedMessage();
+            }
+
             return new ParsedMessage 
             {
-                cleanAnswer = CleanAnswerText(baseData.answer),
-                promptTokens = baseData.token_usage.prompt_tokens,
-                completionTokens = baseData.token_usage.completion_tokens,
-                totalTokens = baseData.token_usage.total_tokens
+                answer = baseData.data.answer,
+                texture = baseData.data.commands.texture,
+                voxel = baseData.data.commands.voxel,
+                database = baseData.data.commands.database
             };
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"解析失败: {e.Message}");
-            return new ParsedMessage(); // 返回无效数据
+            Debug.LogError($"解析失败: {e.Message}\nJSON: {jsonString}");
+            return new ParsedMessage();
         }
     }
 
-    private static string CleanAnswerText(string rawText)
-    {
-        // 分步清理流程
-        string step1 = DecodeEscapes(rawText);
-        string step2 = RemoveMarkdown(step1);
-        return FinalTrim(step2);
-    }
-
-    private static string DecodeEscapes(string input)
-    {
-        return input
-            .Replace("\\n", "\n")
-            .Replace("\\\"", "\"")
-            .Replace("\\\\", "\\");
-    }
-
-    private static string RemoveMarkdown(string input)
-    {
-        return Regex.Replace(input, @"```[\s\S]*?```|`", "");
-    }
-
-    private static string FinalTrim(string input)
-    {
-        return input.Trim('\n', ' ', '\t');
-    }
-
-    // 临时中间类
     [System.Serializable]
-    private class BaseChatData 
+    private class ResponseData
     {
+        public bool success;
+        public string error;
+        public SessionData data;
+    }
+
+    [System.Serializable]
+    private class SessionData
+    {
+        public string session_id;
+        public string query;
         public string answer;
-        public TokenUsageData token_usage;
+        public TokenUsage token_usage;
+        public Commands commands;
     }
 
     [System.Serializable]
-    private class TokenUsageData 
+    private class TokenUsage
     {
         public int prompt_tokens;
         public int completion_tokens;
         public int total_tokens;
+    }
+
+    [System.Serializable]
+    private class Commands
+    {
+        public TextureCommand texture;
+        public VoxelCommand voxel;
+        public DatabaseCommand database;
     }
 }

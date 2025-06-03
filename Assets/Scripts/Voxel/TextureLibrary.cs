@@ -15,6 +15,7 @@ using System.IO;
 /// 与其他组件的关系：
 /// - 被 VoxelDefinition 依赖：VoxelDefinition 将纹理注册到此组件获取 sliceIndex
 /// - 被 VoxelRegistry 依赖：VoxelRegistry 订阅 OnLibraryInitialized 事件
+/// - 被 VoxelJsonDB 依赖：VoxelJsonDB 在检测到文件变化时调用 RebuildFull 重新加载所有纹理
 /// 
 /// 执行顺序：该组件设置为 DefaultExecutionOrder(-1000)，确保在 VoxelRegistry 之前初始化
 /// </summary>
@@ -26,7 +27,12 @@ public sealed class TextureLibrary : MonoBehaviour
     readonly List<Texture2D> _textures = new();
     readonly Dictionary<string, int> _lookup = new();
 
-    const string Folder = "VoxelTextures";   // Resources 根目录下
+    public const string Folder = "VoxelTextures";   // Resources 根目录下
+    
+    /// <summary>
+    /// 贴图保存的完整路径
+    /// </summary>
+    public static string TextureSavePath => Path.Combine(Application.dataPath, "Resources", Folder);
 
     /// <summary>
     /// Event triggered when TextureLibrary is fully initialized
@@ -92,6 +98,32 @@ public sealed class TextureLibrary : MonoBehaviour
 
         return I.Register(texture);
     }
+    
+    /// <summary>
+    /// 完全重建纹理库，用于外部JSON数据变更时重新加载所有纹理
+    /// </summary>
+    public void RebuildFull()
+    {
+        Debug.Log("TextureLibrary: Performing full rebuild of texture library");
+        
+        // 清空当前纹理库
+        _textures.Clear();
+        _lookup.Clear();
+        
+        // 释放当前纹理数组资源
+        if (Array != null && Array != Voxels.VoxelResources.DefaultTextureArray)
+        {
+            Destroy(Array);
+        }
+        
+        // 重新初始化基础纹理数组
+        InitializeTextureArray();
+        LoadFolder();            // 使用path加载贴图避免贴图不可读的情况
+
+        // 触发初始化完成事件，让 VoxelRegistry 注册所有的 VoxelDefinition 和纹理
+
+        Debug.Log("TextureLibrary: Full rebuild completed");
+    }
     #endregion
 
     #region Internals
@@ -101,7 +133,6 @@ public sealed class TextureLibrary : MonoBehaviour
 
         if (_lookup.TryGetValue(tex.name, out int id)) //这里必须确保每个tex.name是唯一的   
         {
-            Debug.Log($"TextureLibrary: Found existing texture '{tex.name}' at index {id}");
             return id;
         }
 
@@ -125,7 +156,6 @@ public sealed class TextureLibrary : MonoBehaviour
         _lookup[tex.name] = id;
 
         RebuildArray();          // ★ 可热插拔：立刻重建并更新所有材质
-        Debug.Log($"TextureLibrary: Registered texture '{tex.name}' at index {id}");
         return id;      //返回的是贴图的 slice index，这个 index 就是 Texture2DArray 中的图层编号。
     }
 
@@ -216,7 +246,6 @@ public sealed class TextureLibrary : MonoBehaviour
                 {
                     Graphics.CopyTexture(Array, i, 0, newArr, i, 0);
                 }
-                Debug.Log($"TextureLibrary: Rebuilt texture array with {_textures.Count + 1 - Array.depth} additional textures");
                 arr = newArr;
             }
             else
@@ -239,16 +268,11 @@ public sealed class TextureLibrary : MonoBehaviour
                     try
                     {
                         Graphics.CopyTexture(_textures[i], 0, 0, arr, textureIndex, 0);
-                        Debug.Log($"Added/Updated texture '{_textures[i].name}' to array at index {textureIndex}");
                     }
                     catch (UnityException ex)
                     {
                         Debug.LogWarning($"Failed to copy texture '{_textures[i].name}': {ex.Message}");
                     }
-                }
-                else
-                {
-                    Debug.LogWarning($"Invalid texture index {textureIndex} for '{_textures[i].name}'");
                 }
             }
         }
@@ -269,7 +293,6 @@ public sealed class TextureLibrary : MonoBehaviour
     {
         // 使用 VoxelResources 提供的默认纹理数组
         Array = Voxels.VoxelResources.DefaultTextureArray;
-        Debug.Log("TextureLibrary: Initialized texture array");
     }
 
     #endregion

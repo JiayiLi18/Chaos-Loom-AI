@@ -55,7 +55,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""initialStateCheck"": true
                 },
                 {
-                    ""name"": ""LookLocker"",
+                    ""name"": ""LookWhenLocked"",
                     ""type"": ""Button"",
                     ""id"": ""7ce57a0f-7453-40e4-a551-8474ed71070a"",
                     ""expectedControlType"": ""Button"",
@@ -71,6 +71,33 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Toggle"",
+                    ""type"": ""Button"",
+                    ""id"": ""1bbe430e-6a2b-462e-a375-8ae81c30d05f"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ColorEdit"",
+                    ""type"": ""Button"",
+                    ""id"": ""c2ba7a7b-afed-404e-a03e-74197ce77df8"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""VerticalMove"",
+                    ""type"": ""Value"",
+                    ""id"": ""4241025f-7176-46f1-be5b-ae4fd23f7b7a"",
+                    ""expectedControlType"": ""Axis"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": true
                 }
             ],
             ""bindings"": [
@@ -187,11 +214,11 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""5607e4b7-adc9-4dc6-8680-11212206964b"",
-                    ""path"": ""<Mouse>/rightButton"",
+                    ""path"": ""<Mouse>/middleButton"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
-                    ""action"": ""LookLocker"",
+                    ""action"": ""LookWhenLocked"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
@@ -205,6 +232,61 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""action"": ""Jump"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""44d6a536-9f06-4dc8-8194-ef57769c32fe"",
+                    ""path"": ""<Keyboard>/tab"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Toggle"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""2e7b905e-69c9-4b4d-b2de-3fa6313e6d8c"",
+                    ""path"": ""<Keyboard>/c"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""ColorEdit"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""1D Axis"",
+                    ""id"": ""d3e4a5f7-8f42-4807-b3e7-e177c893d6d9"",
+                    ""path"": ""1DAxis"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""VerticalMove"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""negative"",
+                    ""id"": ""8d45a582-953d-4f16-b350-9065d5a1bbe9"",
+                    ""path"": ""<Keyboard>/e"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""VerticalMove"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""positive"",
+                    ""id"": ""1c367540-38a4-477a-8ad3-a8675b39c528"",
+                    ""path"": ""<Keyboard>/q"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""VerticalMove"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
                 }
             ]
         }
@@ -216,8 +298,11 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         m_Player_Move = m_Player.FindAction("Move", throwIfNotFound: true);
         m_Player_Look = m_Player.FindAction("Look", throwIfNotFound: true);
         m_Player_SwitchTool = m_Player.FindAction("SwitchTool", throwIfNotFound: true);
-        m_Player_LookLocker = m_Player.FindAction("LookLocker", throwIfNotFound: true);
+        m_Player_LookWhenLocked = m_Player.FindAction("LookWhenLocked", throwIfNotFound: true);
         m_Player_Jump = m_Player.FindAction("Jump", throwIfNotFound: true);
+        m_Player_Toggle = m_Player.FindAction("Toggle", throwIfNotFound: true);
+        m_Player_ColorEdit = m_Player.FindAction("ColorEdit", throwIfNotFound: true);
+        m_Player_VerticalMove = m_Player.FindAction("VerticalMove", throwIfNotFound: true);
     }
 
     public void Dispose()
@@ -282,8 +367,11 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_Move;
     private readonly InputAction m_Player_Look;
     private readonly InputAction m_Player_SwitchTool;
-    private readonly InputAction m_Player_LookLocker;
+    private readonly InputAction m_Player_LookWhenLocked;
     private readonly InputAction m_Player_Jump;
+    private readonly InputAction m_Player_Toggle;
+    private readonly InputAction m_Player_ColorEdit;
+    private readonly InputAction m_Player_VerticalMove;
     public struct PlayerActions
     {
         private @PlayerControls m_Wrapper;
@@ -291,8 +379,11 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         public InputAction @Move => m_Wrapper.m_Player_Move;
         public InputAction @Look => m_Wrapper.m_Player_Look;
         public InputAction @SwitchTool => m_Wrapper.m_Player_SwitchTool;
-        public InputAction @LookLocker => m_Wrapper.m_Player_LookLocker;
+        public InputAction @LookWhenLocked => m_Wrapper.m_Player_LookWhenLocked;
         public InputAction @Jump => m_Wrapper.m_Player_Jump;
+        public InputAction @Toggle => m_Wrapper.m_Player_Toggle;
+        public InputAction @ColorEdit => m_Wrapper.m_Player_ColorEdit;
+        public InputAction @VerticalMove => m_Wrapper.m_Player_VerticalMove;
         public InputActionMap Get() { return m_Wrapper.m_Player; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -311,12 +402,21 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @SwitchTool.started += instance.OnSwitchTool;
             @SwitchTool.performed += instance.OnSwitchTool;
             @SwitchTool.canceled += instance.OnSwitchTool;
-            @LookLocker.started += instance.OnLookLocker;
-            @LookLocker.performed += instance.OnLookLocker;
-            @LookLocker.canceled += instance.OnLookLocker;
+            @LookWhenLocked.started += instance.OnLookWhenLocked;
+            @LookWhenLocked.performed += instance.OnLookWhenLocked;
+            @LookWhenLocked.canceled += instance.OnLookWhenLocked;
             @Jump.started += instance.OnJump;
             @Jump.performed += instance.OnJump;
             @Jump.canceled += instance.OnJump;
+            @Toggle.started += instance.OnToggle;
+            @Toggle.performed += instance.OnToggle;
+            @Toggle.canceled += instance.OnToggle;
+            @ColorEdit.started += instance.OnColorEdit;
+            @ColorEdit.performed += instance.OnColorEdit;
+            @ColorEdit.canceled += instance.OnColorEdit;
+            @VerticalMove.started += instance.OnVerticalMove;
+            @VerticalMove.performed += instance.OnVerticalMove;
+            @VerticalMove.canceled += instance.OnVerticalMove;
         }
 
         private void UnregisterCallbacks(IPlayerActions instance)
@@ -330,12 +430,21 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @SwitchTool.started -= instance.OnSwitchTool;
             @SwitchTool.performed -= instance.OnSwitchTool;
             @SwitchTool.canceled -= instance.OnSwitchTool;
-            @LookLocker.started -= instance.OnLookLocker;
-            @LookLocker.performed -= instance.OnLookLocker;
-            @LookLocker.canceled -= instance.OnLookLocker;
+            @LookWhenLocked.started -= instance.OnLookWhenLocked;
+            @LookWhenLocked.performed -= instance.OnLookWhenLocked;
+            @LookWhenLocked.canceled -= instance.OnLookWhenLocked;
             @Jump.started -= instance.OnJump;
             @Jump.performed -= instance.OnJump;
             @Jump.canceled -= instance.OnJump;
+            @Toggle.started -= instance.OnToggle;
+            @Toggle.performed -= instance.OnToggle;
+            @Toggle.canceled -= instance.OnToggle;
+            @ColorEdit.started -= instance.OnColorEdit;
+            @ColorEdit.performed -= instance.OnColorEdit;
+            @ColorEdit.canceled -= instance.OnColorEdit;
+            @VerticalMove.started -= instance.OnVerticalMove;
+            @VerticalMove.performed -= instance.OnVerticalMove;
+            @VerticalMove.canceled -= instance.OnVerticalMove;
         }
 
         public void RemoveCallbacks(IPlayerActions instance)
@@ -358,7 +467,10 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         void OnMove(InputAction.CallbackContext context);
         void OnLook(InputAction.CallbackContext context);
         void OnSwitchTool(InputAction.CallbackContext context);
-        void OnLookLocker(InputAction.CallbackContext context);
+        void OnLookWhenLocked(InputAction.CallbackContext context);
         void OnJump(InputAction.CallbackContext context);
+        void OnToggle(InputAction.CallbackContext context);
+        void OnColorEdit(InputAction.CallbackContext context);
+        void OnVerticalMove(InputAction.CallbackContext context);
     }
 }

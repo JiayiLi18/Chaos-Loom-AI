@@ -24,20 +24,50 @@ namespace Voxels
     public struct Voxel : System.IEquatable<Voxel>
     {
         [SerializeField] private ushort _typeId;
+        [SerializeField] private Color32 _color;  // 颜色信息，仅用于可变色体素
 
         public ushort TypeId => _typeId;
         public bool   IsAir  => _typeId == 0;
         public VoxelDefinition Definition => VoxelRegistry.GetDefinition(_typeId);
+        
+        // 是否是可变色体素（ID = 1）
+        public bool IsColorable => _typeId == 1;
+        
+        // 获取体素颜色
+        public Color32 Color
+        {
+            get => IsColorable ? _color : new Color32(255, 255, 255, 255);
+            set => _color = value;
+        }
 
-        public Voxel(ushort id) => _typeId = id;
+        // 创建普通体素
+        public Voxel(ushort id)
+        {
+            _typeId = id;
+            _color = new Color32(255, 255, 255, 255);
+        }
+
+        // 创建可变色体素
+        public Voxel(Color32 color)
+        {
+            _typeId = 1; // 可变色体素的ID固定为1
+            _color = color;
+        }
 
         public static readonly Voxel Air = new Voxel(0);
 
-        public bool Equals(Voxel other) => _typeId == other._typeId;
-        public override bool Equals(object obj) => obj is Voxel v && Equals(v);
-        public override int GetHashCode() => _typeId.GetHashCode();
-        public static bool operator ==(Voxel a, Voxel b) => a._typeId == b._typeId;
-        public static bool operator !=(Voxel a, Voxel b) => a._typeId != b._typeId;
+        public bool Equals(Voxel other) => 
+            _typeId == other._typeId && 
+            (!IsColorable || _color.Equals(other._color));
+            
+        public override bool Equals(object obj) => 
+            obj is Voxel v && Equals(v);
+            
+        public override int GetHashCode() => 
+            IsColorable ? (_typeId, _color).GetHashCode() : _typeId.GetHashCode();
+            
+        public static bool operator ==(Voxel a, Voxel b) => a.Equals(b);
+        public static bool operator !=(Voxel a, Voxel b) => !a.Equals(b);
     }
 }
 

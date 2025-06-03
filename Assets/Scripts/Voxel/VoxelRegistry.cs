@@ -13,10 +13,12 @@ namespace Voxels
     /// 3. 提供通过 typeId 查找对应 VoxelDefinition 的方法 (GetDefinition)
     /// 4. 支持运行时动态注册新的体素类型
     /// 5. 确保所有体素定义的资源（如纹理）被正确加载
+    /// 6. 支持完全清空并重新加载体素定义（用于JSON数据同步）
     /// 
     /// 与其他组件的关系：
     /// - 依赖 TextureLibrary：订阅 TextureLibrary.OnLibraryInitialized 事件以确保在纹理库初始化后再加载体素定义
     /// - 被 Voxel 结构体依赖：Voxel 通过 typeId 从此注册表查找完整的 VoxelDefinition
+    /// - 被 VoxelJsonDB 依赖：VoxelJsonDB 在检测到文件变化时调用 Clear 并重新注册所有体素
     /// 
     /// 执行顺序：设置为 DefaultExecutionOrder(1000)，确保在 TextureLibrary (-1000) 之后初始化
     /// </summary>
@@ -25,7 +27,6 @@ namespace Voxels
     {
         private static readonly List<VoxelDefinition> s_Definitions = new List<VoxelDefinition>();
         private static readonly Dictionary<string, ushort> s_IdByName = new Dictionary<string, ushort>(StringComparer.Ordinal);
-        private static bool s_Initialized = false;
         private static List<VoxelDefinition> s_PendingRegistrations = new List<VoxelDefinition>();
 
         /// <summary>Number of registered voxel types ("Air" is normally 0).</summary>
@@ -40,12 +41,23 @@ namespace Voxels
         /// <summary>获取所有已注册的VoxelDefinition</summary>
         public static IReadOnlyList<VoxelDefinition> GetAllDefinitions() => s_Definitions;
 
-        /// <summary>Register a new voxel definition and return its runtime ID.</summary>
-        public static ushort Register(VoxelDefinition def)
+        /// <summary>Register a new voxel definition with a specific ID.</summary>
+        public static ushort RegisterWithId(VoxelDefinition def, ushort requestedId)
         {
             if (def == null) throw new ArgumentNullException(nameof(def));
+            
+            // 确保名称不为空
+            if (string.IsNullOrEmpty(def.name))
+            {
+                Debug.LogError("Cannot register voxel with empty name!");
+                return 0; // 返回0表示注册失败
+            }
+            
             if (s_IdByName.TryGetValue(def.name, out var existing))
+            {
+                Debug.LogWarning($"Voxel '{def.name}' already registered with ID {existing}");
                 return existing; // already registered
+            }
 
             // If TextureLibrary isn't ready yet, queue for later registration
             if (TextureLibrary.I == null)
@@ -53,92 +65,89 @@ namespace Voxels
                 if (!s_PendingRegistrations.Contains(def))
                 {
                     s_PendingRegistrations.Add(def);
-                    Debug.Log($"Queued voxel '{def.name}' for registration once TextureLibrary is ready");
                 }
                 return 0; // Temporary ID, will be updated when actually registered
             }
 
-            ushort id = (ushort)s_Definitions.Count; // sequential; 0 reserved for Air
-            def.typeId = id;
+            // Ensure the definitions list has enough capacity
+            while (s_Definitions.Count <= requestedId)
+            {
+                s_Definitions.Add(null);
+            }
 
-            // ✅ 注册贴图
+            // 检查是否已有相同ID的体素
+            if (s_Definitions[requestedId] != null)
+            {
+                Debug.LogError($"ID conflict: ID {requestedId} is already used by '{s_Definitions[requestedId].name}'");
+                return 0; // 返回0表示注册失败
+            }
+
+            def.typeId = requestedId;
+
+            // Register texture
             if (def.texture != null)
             {
                 def.UpdateTextureIfNeeded();
                 Debug.Log($"Registered voxel '{def.name}' with texture '{def.texture.name}' at index {def.sliceIndex}");
             }
-            else
-            {
-                Debug.LogWarning($"Voxel '{def.name}' has no texture assigned!");
-            }
 
-            s_Definitions.Add(def);
-            s_IdByName[def.name] = id;
+            s_Definitions[requestedId] = def;
+            s_IdByName[def.name] = requestedId;
             OnRegistryChanged?.Invoke();
-            return id;
+            return requestedId;
         }
 
-        /// <summary>Call once at boot to load all ScriptableObject definitions in Resources/Voxels.</summary>
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        private static void InitializeRegistry()
+        /// <summary>Register a new voxel definition and return its runtime ID.</summary>
+        public static ushort Register(VoxelDefinition def)
         {
-            TryInitVoxelRegistry();
-        }
-
-        private static void TryInitVoxelRegistry()
-        {
-            // Subscribe to TextureLibrary initialization event
-            TextureLibrary.OnLibraryInitialized += OnTextureLibraryInitialized;
-
-            // In case TextureLibrary is already initialized
-            if (TextureLibrary.IsInitialized)
+            if (def == null) throw new ArgumentNullException(nameof(def));
+            
+            // 确保名称不为空
+            if (string.IsNullOrEmpty(def.name))
             {
-                OnTextureLibraryInitialized();
+                Debug.LogError("Cannot register voxel with empty name!");
+                return 0; // 返回0表示注册失败
             }
-            else
+            
+            if (s_IdByName.TryGetValue(def.name, out var existing))
             {
-                Debug.Log("VoxelRegistry: Waiting for TextureLibrary to be initialized...");
+                Debug.LogWarning($"Voxel '{def.name}' already registered with ID {existing}");
+                return existing; // already registered
             }
+
+            // Find the next available ID
+            ushort nextId = 0;
+            while (nextId < s_Definitions.Count && s_Definitions[nextId] != null)
+            {
+                nextId++;
+            }
+
+            return RegisterWithId(def, nextId);
         }
 
-        // This will be called when TextureLibrary is initialized
-        private static void OnTextureLibraryInitialized()
+        /// <summary>
+        /// 清空所有注册的体素定义，用于外部JSON数据变更时重新加载
+        /// 注意：这会导致所有现有的Voxel实例的typeId变得无效，应该仅在初始化阶段或特定的重载点使用
+        /// </summary>
+        public static void Clear()
         {
-            // Unsubscribe to avoid multiple calls
-            TextureLibrary.OnLibraryInitialized -= OnTextureLibraryInitialized;
-
-            Debug.Log("VoxelRegistry: TextureLibrary is now initialized, proceeding with voxel loading");
-            LoadVoxelDefinitions();
-        }
-
-        private static void LoadVoxelDefinitions()
-        {
-            if (s_Initialized) return;
-            s_Initialized = true;
-
-            // Load voxel definitions from Resources
-            var defs = Resources.LoadAll<VoxelDefinition>("Voxels");
-            foreach (var d in defs) Register(d);
-
-            // Process any pending registrations
-            foreach (var d in s_PendingRegistrations)
+            Debug.Log("VoxelRegistry: Clearing all voxel definitions");
+            
+            // 销毁所有ScriptableObject以防止内存泄漏
+            foreach (var def in s_Definitions)
             {
-                if (!s_IdByName.ContainsKey(d.name)) // Check again in case it was registered in the previous step
-                    Register(d);
+                if (def != null)
+                {
+                    UnityEngine.Object.Destroy(def);
+                }
             }
+            
+            s_Definitions.Clear();
+            s_IdByName.Clear();
             s_PendingRegistrations.Clear();
-
-            // Ensure index 0 exists and represents Air.
-            if (s_Definitions.Count == 0 || s_Definitions[0].isTransparent == false)
-            {
-                var air = ScriptableObject.CreateInstance<VoxelDefinition>();
-                air.name = "Air";
-                air.displayName = "Air";
-                air.description = "Air";
-                air.isTransparent = true;
-                air.baseColor = new Color32(0, 0, 0, 0);
-                Register(air); // becomes ID 0
-            }
+            
+            Debug.Log("VoxelRegistry: Registry cleared, ready for reinitialization");
+            OnRegistryChanged?.Invoke();
         }
     }
 }

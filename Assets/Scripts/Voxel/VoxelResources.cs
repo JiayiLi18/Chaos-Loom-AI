@@ -123,10 +123,27 @@ namespace Voxels
                 _defaultMat.SetTexture("_Blocks", newArray);
             }
             
+            // 查找场景中所有使用材质实例的渲染器，并更新它们
+            Renderer[] renderers = Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None);
+            int updatedCount = 0;
+            
+            foreach (Renderer renderer in renderers)
+            {
+                // 检查所有材质（包括实例）
+                foreach (Material mat in renderer.materials)
+                {
+                    if (mat != null && mat.HasProperty("_Blocks"))
+                    {
+                        mat.SetTexture("_Blocks", newArray);
+                        updatedCount++;
+                    }
+                }
+            }
+            
             // 缓存新的贴图数组作为默认值
             _defaultTexArray = newArray;
             
-            Debug.Log("[VoxelResources] Updated all materials with new texture array");
+            Debug.Log($"[VoxelResources] Updated all materials with new texture array (updated {updatedCount} material instances)");
         }
     }
 }

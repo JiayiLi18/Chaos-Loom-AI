@@ -18,12 +18,25 @@ namespace Voxels
         [ReadOnly] public NativeArray<Voxel> voxels;   // length = SubChunk.Size³
         [ReadOnly] public NativeArray<Color32> palette;  // typeId → base colour
         [ReadOnly] public NativeArray<float> slices;   // typeId → texture slice index
+        
+        // 新增：每个typeId的每个面的贴图索引 [typeId][faceIndex]
+        [ReadOnly] public NativeArray<float> faceSlices; // length = typeId * 6
+        [ReadOnly] public int maxTypeId; // 最大的typeId值，用于计算faceSlices的索引
+
+        // 边界缓存数组
+        [ReadOnly] public NativeArray<ushort> borderPX, borderNX;
+        [ReadOnly] public NativeArray<ushort> borderPY, borderNY;
+        [ReadOnly] public NativeArray<ushort> borderPZ, borderNZ;
+
+        // 颜色覆盖数据
+        [ReadOnly] public NativeArray<Color32> colorOverrides;  // 体素的覆盖颜色
+        [ReadOnly] public NativeArray<bool> hasColorOverride;   // 是否有颜色覆盖
 
         // ────────── Outputs ─────────
         public NativeList<float3> vertices;
         public NativeList<int> triangles;
         public NativeList<Color32> colors;
-        public NativeList<Vector2> uvs;   // UV0 (tile‑rect, kept 0‑1 full‑quad)
+        public NativeList<Vector2> uvs;   // UV0 (tile‑rect)
         public NativeList<Vector2> uvs1;  // UV1 (x = sliceIndex)
 
         // Local helpers
@@ -61,7 +74,7 @@ namespace Voxels
             {
                 bool isPositive = face % 2 == 0;          // even indices are +, odd are -
                 int axis = face / 2;               // 0:X 1:Y 2:Z
-                ProcessDirection(mask, axis, isPositive, s_Normals[face], s_Right[face], s_Up[face]);
+                ProcessDirection(mask, axis, isPositive, s_Normals[face], s_Right[face], s_Up[face], face);
             }
 
             mask.Dispose();
@@ -69,11 +82,15 @@ namespace Voxels
 
         // ─────────────────────────────────────────────────────────────
         private void ProcessDirection(NativeArray<ushort> mask, int axis, bool positive,
-                                       float3 normal, float3 right, float3 up)
+                                       float3 normal, float3 right, float3 up, int faceIndex)
         {
             int N = SubChunk.Size;
             int uAxis = (axis + 1) % 3;
             int vAxis = (axis + 2) % 3;
+
+            // 创建颜色掩码数组
+            var colorMask = new NativeArray<Color32>(N * N, Allocator.Temp);
+            var hasOverrideMask = new NativeArray<bool>(N * N, Allocator.Temp);
 
             // iterate slices along the normal
             for (int d = 0; d < N; ++d)
@@ -82,6 +99,8 @@ namespace Voxels
                 for (int i = 0; i < mask.Length; i++)
                 {
                     mask[i] = 0;
+                    colorMask[i] = Color.white;
+                    hasOverrideMask[i] = false;
                 }
 
                 // 2. build exposure mask for this slice
@@ -101,11 +120,50 @@ namespace Voxels
 
                         // neighbour position one step towards normal
                         int3 nPos = pos; nPos[axis] += positive ? 1 : -1;
+                        bool neighbourSolid;
                         int nIdx = Flatten(nPos.x, nPos.y, nPos.z);
-                        bool neighbourSolid = (nIdx >= 0) && !voxels[nIdx].IsAir;
+
+                        if (nIdx >= 0)                 // 仍在本 subchunk 内
+                        {
+                            neighbourSolid = !voxels[nIdx].IsAir;
+                        }
+                        else                           // 落到边界外 → 查邻接缓存
+                        {
+                            int uCoord = pos[uAxis];   // 重命名避免冲突
+                            int vCoord = pos[vAxis];
+
+                            switch (axis)          // X=0 Y=1 Z=2
+                            {
+                                case 0:
+                                    neighbourSolid = positive
+                                        ? borderPX[vCoord * SubChunk.Size + uCoord] != 0
+                                        : borderNX[vCoord * SubChunk.Size + uCoord] != 0;
+                                    break;
+                                case 1:
+                                    neighbourSolid = positive
+                                        ? borderPY[vCoord * SubChunk.Size + uCoord] != 0
+                                        : borderNY[vCoord * SubChunk.Size + uCoord] != 0;
+                                    break;
+                                default:
+                                    neighbourSolid = positive
+                                        ? borderPZ[vCoord * SubChunk.Size + uCoord] != 0
+                                        : borderNZ[vCoord * SubChunk.Size + uCoord] != 0;
+                                    break;
+                            }
+                        }
 
                         if (!neighbourSolid)
-                            mask[v * N + u] = typeId;        // expose face
+                        {
+                            int maskIndex = v * N + u;
+                            mask[maskIndex] = typeId;        // expose face
+                            
+                            // 存储颜色覆盖信息
+                            if (hasColorOverride[idx])
+                            {
+                                colorMask[maskIndex] = colorOverrides[idx];
+                                hasOverrideMask[maskIndex] = true;
+                            }
+                        }
                     }
                 }
 
@@ -119,28 +177,52 @@ namespace Voxels
                 {
                     origin[axis] = d;
                 }
-                GreedyMaskToMesh(mask, N, N, origin, normal, right, up, positive);
+                GreedyMaskToMesh(mask, colorMask, hasOverrideMask, N, N, origin, normal, right, up, positive, faceIndex);
             }
+
+            colorMask.Dispose();
+            hasOverrideMask.Dispose();
         }
 
         // ─────────────────────────────────────────────────────────────
-        private void GreedyMaskToMesh(NativeArray<ushort> m, int W, int H, float3 origin,
-                                       float3 normal, float3 right, float3 up, bool positive)
+        private void GreedyMaskToMesh(NativeArray<ushort> m, NativeArray<Color32> colorMask, NativeArray<bool> hasOverrideMask,
+                                    int W, int H, float3 origin, float3 normal, float3 right, float3 up, bool positive, int faceIndex)
         {
             for (int i = 0; i < m.Length;)
             {
                 ushort id = m[i];
                 if (id == 0) { ++i; continue; }
 
+                // 检查颜色是否相同
+                Color32 overrideColor = colorMask[i];
+                bool hasOverride = hasOverrideMask[i];
+
                 // determine quad dims
                 int w = 1;
-                while (w + i % W < W && m[i + w] == id) w++;
+                while (w + i % W < W && m[i + w] == id && 
+                      // 如果当前方块有颜色覆盖，不进行合并
+                      !hasOverride &&
+                      // 如果下一个方块有颜色覆盖，也不进行合并
+                      !hasOverrideMask[i + w])
+                    w++;
+                
                 int h = 1;
                 while ((i / W) + h < H)
                 {
                     bool same = true;
                     for (int k = 0; k < w; ++k)
-                        if (m[i + k + h * W] != id) { same = false; break; }
+                    {
+                        int index = i + k + h * W;
+                        if (m[index] != id || 
+                            // 如果当前方块有颜色覆盖，不进行合并
+                            hasOverride ||
+                            // 如果下一行的方块有颜色覆盖，也不进行合并
+                            hasOverrideMask[index])
+                        { 
+                            same = false; 
+                            break; 
+                        }
+                    }
                     if (!same) break;
                     h++;
                 }
@@ -158,45 +240,51 @@ namespace Voxels
                 int vStart = vertices.Length;
                 if (positive)
                 {
-                    // ★ 顺时针：BL → BR → TR → TL
                     vertices.Add(bl); vertices.Add(br); vertices.Add(tr); vertices.Add(tl);
-
-                    // 顺时针三角
                     triangles.Add(vStart); triangles.Add(vStart + 1); triangles.Add(vStart + 2);
                     triangles.Add(vStart); triangles.Add(vStart + 2); triangles.Add(vStart + 3);
                 }
-                else // reverse winding for back face so normal points outward
+                else
                 {
-                    // 仍可用同一顺序，再反三角即可
                     vertices.Add(bl); vertices.Add(br); vertices.Add(tr); vertices.Add(tl);
-
-                    // 反向三角：0‑2‑1  & 0‑3‑2
                     triangles.Add(vStart); triangles.Add(vStart + 2); triangles.Add(vStart + 1);
                     triangles.Add(vStart); triangles.Add(vStart + 3); triangles.Add(vStart + 2);
                 }
 
-
                 // colour & UVs
-                Color32 c = Color.white; // 默认颜色
-                if (id < palette.Length)
-                {
-                    c = palette[id];
-                }
+                Color32 c = hasOverride ? overrideColor : 
+                           (id < palette.Length ? palette[id] : Color.white);
+                
                 for (int k = 0; k < 4; ++k) colors.Add(c);
 
-                // ---- 生成按 1m/像素 平铺的 UV0 -------------------------
-                uvs.Add(new Vector2(x0, y0));        // BL
-                uvs.Add(new Vector2(x0 + w, y0));        // BR
-                uvs.Add(new Vector2(x0 + w, y0 + h));    // TR
-                uvs.Add(new Vector2(x0, y0 + h));    // TL
-
+                // UV0 generation (block atlas UVs)
+                if (faceIndex == 0 || faceIndex == 1) // +X或-X面需要旋转90度
+                {
+                    uvs.Add(new Vector2(y0 + h, x0));          // BL 
+                    uvs.Add(new Vector2(y0 + h, x0 + w));      // BR
+                    uvs.Add(new Vector2(y0, x0 + w));          // TR
+                    uvs.Add(new Vector2(y0, x0));              // TL
+                }
+                else
+                {
+                    uvs.Add(new Vector2(x0, y0));        // BL
+                    uvs.Add(new Vector2(x0 + w, y0));        // BR
+                    uvs.Add(new Vector2(x0 + w, y0 + h));    // TR
+                    uvs.Add(new Vector2(x0, y0 + h));    // TL
+                }
 
                 // UV1.x = slice index (same per‑quad)
-                float slice = 0f; // 默认值
-                if (id < slices.Length)
+                float slice = 0f;
+                
+                if (id > 0 && id <= maxTypeId && faceSlices.Length >= (id * 6 + faceIndex))
+                {
+                    slice = faceSlices[id * 6 + faceIndex];
+                }
+                else if (id < slices.Length)
                 {
                     slice = slices[id];
                 }
+                
                 Vector2 s = new Vector2(slice, 0);
                 for (int k = 0; k < 4; ++k) uvs1.Add(s);
 

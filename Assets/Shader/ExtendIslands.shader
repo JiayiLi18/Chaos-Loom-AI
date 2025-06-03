@@ -19,11 +19,13 @@
 
             struct appdata{
                 float4 vertex : POSITION;
-                float2 uv : TEXCOORD0;
+                float2 uv0 : TEXCOORD0;
+                float2 paintUV : TEXCOORD2;
             };
 
             struct v2f{
                 float2 uv : TEXCOORD0;
+                float2 paint : TEXCOORD1;
                 float4 vertex : SV_POSITION;
             };
 
@@ -36,26 +38,27 @@
             v2f vert (appdata v){
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
+                o.uv = v.uv0;
+                o.paint = v.paintUV;
                 return o;
             }
 
             fixed4 frag (v2f i) : SV_Target{
                 float2 offsets[8] = {float2(-_OffsetUV, 0), float2(_OffsetUV, 0), float2(0, _OffsetUV), float2(0, -_OffsetUV), float2(-_OffsetUV, _OffsetUV), float2(_OffsetUV, _OffsetUV), float2(_OffsetUV, -_OffsetUV), float2(-_OffsetUV, -_OffsetUV)};
-				float2 uv = i.uv;
-				float4 color = tex2D(_MainTex, uv);
-				float4 island = tex2D(_UVIslands, uv);
+                float2 uv = i.paint;
+                float4 color = tex2D(_MainTex, uv);
+                float4 island = tex2D(_UVIslands, uv);
 
                 if(island.z < 1){
                     float4 extendedColor = color;
-                    for	(int i = 0; i < offsets.Length; i++){
+                    for    (int i = 0; i < offsets.Length; i++){
                         float2 currentUV = uv + offsets[i] * _MainTex_TexelSize.xy;
                         float4 offsettedColor = tex2D(_MainTex, currentUV);
                         extendedColor = max(offsettedColor, extendedColor);
                     }
                     color = extendedColor;
                 }
-				return color;
+                return color;
             }
             ENDCG
         }

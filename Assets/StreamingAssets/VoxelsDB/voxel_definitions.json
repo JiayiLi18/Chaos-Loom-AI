@@ -1,0 +1,33 @@
+{
+  "next_id": 0,
+  "revision": "2024-05-13T10:22:08Z",
+  "voxels": [
+    {
+      "id": 0,
+      "name": "Air",
+      "texture": "",
+      "face_textures": ["", "", "", "", "", ""],
+      "base_color": [0, 0, 0],
+      "description": "Air block (transparent).",
+      "is_transparent": true
+    },
+    {
+      "id": 1,
+      "name": "Test",
+      "texture": "Texture_test.png",
+      "face_textures": ["", "", "", "", "", ""],
+      "base_color": [255, 255, 255],
+      "description": "A test block.",
+      "is_transparent": false
+    },
+    {
+      "id": 2,
+      "name": "Dirt",
+      "texture": "",
+      "face_textures": ["Texture-dirt-2.png", "Texture-dirt-2.png", "Texture-dirt-1.png", "Texture-dirt-0.png", "Texture-dirt-2.png", "Texture-dirt-2.png"],
+      "base_color":[255, 255, 255],
+      "description": "A dirt block.",
+      "is_transparent": false
+    }
+  ]
+} 
