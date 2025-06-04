@@ -33,12 +33,13 @@ public class AICommandProcessor : MonoBehaviour
 
         if (message.voxel.executed && message.voxel.success)
         {
-            Debug.Log($"Voxel created successfully: {message.voxel.voxel_name} (ID: {message.voxel.voxel_id})");
-            HandleVoxelCreation();
+            string operationType = message.voxel.operation == "update" ? "updated" : "created";
+            Debug.Log($"Voxel {operationType} successfully: {message.voxel.voxel_name} (ID: {message.voxel.voxel_id})");
+            HandleVoxelOperation(message);
         }
         else if (message.voxel.executed && !message.voxel.success)
         {
-            Debug.LogError($"Voxel creation failed: {message.voxel.error}");
+            Debug.LogError($"Voxel operation failed: {message.voxel.error}");
         }
 
         if (message.database.executed && message.database.success)
@@ -52,44 +53,8 @@ public class AICommandProcessor : MonoBehaviour
         }
     }
 
-    // Add JSON extraction method, try multiple patterns
-    private string ExtractJsonCommand(string text)
-    {
-        // 1. Try to find complete JSON object
-        Match jsonMatch = Regex.Match(text, @"\{[\s\S]*?\}");
-        if (jsonMatch.Success)
-        {
-            string potentialJson = jsonMatch.Value;
-            // Verify if it contains command field
-            if (potentialJson.Contains("\"command\""))
-            {
-                return potentialJson;
-            }
-        }
-        
-        // 2. Try to extract content from json code block
-        Match codeBlockMatch = Regex.Match(text, @"```json\s*\n\s*(\{[\s\S]*?\})\s*\n\s*```");
-        if (codeBlockMatch.Success && codeBlockMatch.Groups.Count > 1)
-        {
-            return codeBlockMatch.Groups[1].Value;
-        }
-        
-        // 3. Try to extract from other code blocks
-        Match otherCodeMatch = Regex.Match(text, @"```\s*\n\s*(\{[\s\S]*?\})\s*\n\s*```");
-        if (otherCodeMatch.Success && otherCodeMatch.Groups.Count > 1)
-        {
-            string potentialJson = otherCodeMatch.Groups[1].Value;
-            if (potentialJson.Contains("\"command\""))
-            {
-                return potentialJson;
-            }
-        }
-        
-        return string.Empty;
-    }
-
     // --------------------------------- Command Processing ---------------------------------
-    private void HandleVoxelCreation()
+    private void HandleVoxelOperation(ParsedMessage message)
     {
         // Check VoxelJsonDB reference
         if (voxelDBReference == null)
@@ -119,8 +84,9 @@ public class AICommandProcessor : MonoBehaviour
         // Refresh database
         voxelDBReference.RefreshDatabase();
         
-        // Send success message
-        chatUIReference.OnReceiveMessage("Successfully refreshed voxel database, new voxel types have been loaded.");
+        // Send success message with operation details
+        string operationMessage = $"System: {(message.voxel.operation == "update" ? $"Updated voxel '{message.voxel.voxel_name}'" : $"Created new voxel '{message.voxel.voxel_name}'")} (ID: {message.voxel.voxel_id})";
+        chatUIReference.OnReceiveMessage(operationMessage, true);
     }
 
     // --------------------------------- Data Structures ---------------------------------

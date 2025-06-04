@@ -11,15 +11,22 @@ public class RuntimeAIChat : MonoBehaviour
     [SerializeField] private PhotoInventoryUI photoInventoryUI;
     [SerializeField] private AICommandProcessor commandProcessor;
     [SerializeField] private ApiClient apiClient;
-    [SerializeField] private string referenceImagePath;
-
-    private bool _isPhotoSelected = false;
+    [SerializeField] private VoxelInventoryUI voxelInventoryUI;
 
     private bool _isInitialized = false;
+    private string _currentSessionId = null;
 
     private void Start()
     {
         InitializeComponents();
+        // Generate a new session ID when starting
+        StartNewSession();
+    }
+
+    private void StartNewSession()
+    {
+        _currentSessionId = $"session_{System.DateTime.Now:yyyyMMdd_HHmmss}";
+        Debug.Log($"Started new chat session: {_currentSessionId}");
     }
 
     private void OnEnable()
@@ -36,6 +43,10 @@ public class RuntimeAIChat : MonoBehaviour
         {
             photoInventoryUI.enabled = true;
         }
+        if (voxelInventoryUI != null)
+        {
+            voxelInventoryUI.enabled = false;
+        }
     }
 
     private void OnDisable()
@@ -48,11 +59,16 @@ public class RuntimeAIChat : MonoBehaviour
         {
             photoInventoryUI.enabled = false;
         }
+        if (voxelInventoryUI != null)
+        {
+            voxelInventoryUI.enabled = false;
+        }
     }
+
     private void InitializeComponents()
     {
         // 直接使用 FolderPath 生成路径
-        referenceImagePath = Path.Combine(Application.persistentDataPath, PhotoInventoryUI.FolderPath);
+        string referenceImagePath = Path.Combine(Application.persistentDataPath, PhotoInventoryUI.FolderPath);
         Debug.Log("screenshotDir: " + referenceImagePath);
 
         // 确保截图目录存在
@@ -73,6 +89,7 @@ public class RuntimeAIChat : MonoBehaviour
             }
             chatUI.sendButton.onClick.AddListener(OnSendMessage);
             chatUI.photoInventoryToggle.onValueChanged.AddListener(OnPhotoToggleChanged);
+            chatUI.newSessionButton.onClick.AddListener(() => SendChatMessage("", true));
             OnPhotoToggleChanged(false);
         }
 
@@ -85,7 +102,6 @@ public class RuntimeAIChat : MonoBehaviour
             }
             else
             {
-                // 订阅照片选择事件
                 photoInventoryUI.OnPhotoSelected += OnPhotoSelected;
             }
         }
@@ -110,52 +126,91 @@ public class RuntimeAIChat : MonoBehaviour
             }
         }
 
+        if (voxelInventoryUI == null)
+        {
+            voxelInventoryUI = FindAnyObjectByType<VoxelInventoryUI>();
+            if (voxelInventoryUI == null)
+            {
+                Debug.LogWarning("找不到VoxelInventoryUI组件，voxel展示功能将不可用");
+            }
+        }
+
         _isInitialized = true;
     }
 
     private void OnSendMessage()
     {
-        string message = chatUI.inputField.text;
-        SendChatMessage(message);
+        // 在发送消息前先检查并记录状态
+        bool hasPhotoSelected = photoInventoryUI != null && photoInventoryUI.CurrentTexture != null;
+        bool isToggleOn = chatUI.photoInventoryToggle.isOn;
+        
+        string message = chatUI.currentMyMessage;
+        SendChatMessage(message, false);
     }
 
     private void OnPhotoToggleChanged(bool isOn)
     {
-        _isPhotoSelected = isOn;
         chatUI.currentPhoto.gameObject.SetActive(isOn);
         if (isOn)
         {
-            referenceImagePath = PhotoInventoryUI._currentSelectedPhotoPath;
             chatUI.currentPhoto.texture = photoInventoryUI.CurrentTexture;
         }
     }
 
     private void OnPhotoSelected()
     {
-        Debug.Log("Photo selected event received");
-        referenceImagePath = PhotoInventoryUI._currentSelectedPhotoPath;
-        chatUI.currentPhoto.texture = photoInventoryUI.CurrentTexture;
+        if (photoInventoryUI != null && chatUI != null)
+        {
+            chatUI.currentPhoto.texture = photoInventoryUI.CurrentTexture;
+            // 确保在选择照片时打开toggle
+            chatUI.photoInventoryToggle.isOn = true;
+        }
     }
 
-    public void SendChatMessage(string message)
+    public void SendChatMessage(string message, bool isNewSession = false)
     {
-        if (!_isInitialized || string.IsNullOrEmpty(message))
+        if (!_isInitialized)
         {
-            Debug.LogWarning("System not initialized or message is empty");
+            Debug.LogWarning("System not initialized");
             return;
         }
-        referenceImagePath = PhotoInventoryUI._currentSelectedPhotoPath;
 
-        // 再发送用户消息
-        chatUI.OnSendMessage();
-
-        if (_isPhotoSelected && chatUI.photoInventoryToggle.isOn)
+        // If it's a new session request or we don't have a session ID
+        if (isNewSession)
         {
-            apiClient.SendGeneralRequest(message, referenceImagePath, HandleApiResponse);
+            StartNewSession();
+            if (string.IsNullOrEmpty(message))
+            {
+                // If no message provided with new session, just clear the chat
+                chatUI.ClearChat();
+                return;
+            }
         }
-        else
+
+        // Only proceed with API call if there's a message
+        if (!string.IsNullOrEmpty(message))
         {
-            apiClient.SendGeneralRequest(message, "", HandleApiResponse);
+            string currentPhotoPath = "";
+            bool wasToggleOn = chatUI.photoInventoryToggle.isOn;  // 保存toggle状态
+
+            if (wasToggleOn && photoInventoryUI != null)
+            {
+                currentPhotoPath = photoInventoryUI.CurrentPhotoPath;
+                Debug.Log($"Using photo path: {currentPhotoPath}");
+            }
+
+            // 先发送请求
+            apiClient.SendGeneralRequest(message, currentPhotoPath, _currentSessionId, isNewSession, HandleApiResponse);
+            
+            // 发送用户消息（这会更新UI）
+            chatUI.OnSendMessage();
+            
+            // 如果之前是开着的，现在再关闭
+            if (wasToggleOn)
+            {
+                chatUI.photoInventoryToggle.isOn = false;
+                chatUI.currentPhoto.gameObject.SetActive(false);
+            }
         }
     }
 
@@ -164,7 +219,7 @@ public class RuntimeAIChat : MonoBehaviour
         if (!string.IsNullOrEmpty(error))
         {
             Debug.LogError($"API request failed: {error}");
-            chatUI.OnReceiveMessage($"Sorry, request failed: {error}");
+            chatUI.OnReceiveMessage($"Sorry, request failed: {error}", true);
             return;
         }
 
@@ -176,7 +231,7 @@ public class RuntimeAIChat : MonoBehaviour
             if (!parsedMessage.IsValid)
             {
                 Debug.LogWarning("Received an invalid response");
-                chatUI.OnReceiveMessage("Sorry, received an invalid response");
+                chatUI.OnReceiveMessage("Sorry, received an invalid response", true);
                 return;
             }
 
@@ -187,12 +242,19 @@ public class RuntimeAIChat : MonoBehaviour
             if (commandProcessor != null)
             {
                 commandProcessor.ProcessResponse(parsedMessage);
+                
+                // 如果是voxel相关操作，自动打开voxel inventory
+                if (parsedMessage.voxel.executed && parsedMessage.voxel.success && voxelInventoryUI != null)
+                {
+                    voxelInventoryUI.enabled = true;
+                    voxelInventoryUI.gameObject.SetActive(true);
+                }
             }
         }
         catch (System.Exception e)
         {
             Debug.LogError($"Error processing response: {e.Message}");
-            chatUI.OnReceiveMessage("Sorry, there was an error processing the response");
+            chatUI.OnReceiveMessage("Sorry, there was an error processing the response", true);
         }
     }
 

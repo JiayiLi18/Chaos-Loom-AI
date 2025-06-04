@@ -6,21 +6,21 @@ using Voxels;
 /// </summary>
 public class VoxelCreationTool : Tool
 {
-    private RuntimeVoxelTypeCreator voxelTypeCreator;
+    private VoxelInventoryUI voxelInventoryUI;
 
     void OnEnable()
     {
-        if (voxelTypeCreator == null)
+        if (voxelInventoryUI == null)
         {
-            voxelTypeCreator = FindAnyObjectByType<RuntimeVoxelTypeCreator>();
+            voxelInventoryUI = FindAnyObjectByType<VoxelInventoryUI>();
         }
     }
 
     void OnDisable()
     {
-        if (voxelTypeCreator != null)
+        if (voxelInventoryUI != null)
         {
-            voxelTypeCreator.enabled = false;
+            voxelInventoryUI.enabled = false;
         }
     }
 
@@ -28,11 +28,11 @@ public class VoxelCreationTool : Tool
     {
         base.ActivateTool();
         
-        // 激活顺序很重要：先激活RuntimeVoxelTypeCreator，它会负责激活和初始化PaintingToolUI
-        if (voxelTypeCreator != null)
+        if (voxelInventoryUI != null)
         {
-            voxelTypeCreator.gameObject.SetActive(true);
-            voxelTypeCreator.enabled = true;
+            voxelInventoryUI.gameObject.SetActive(true);
+            voxelInventoryUI.enabled = true;
+            voxelInventoryUI.SetAddButtonState(true); // 自动激活add button
         }
     }
 
@@ -40,10 +40,10 @@ public class VoxelCreationTool : Tool
     {
         base.DeactivateTool();
         
-        // 只禁用脚本组件
-        if (voxelTypeCreator != null)
+        if (voxelInventoryUI != null)
         {
-            voxelTypeCreator.enabled = false;
+            voxelInventoryUI.enabled = false;
+            voxelInventoryUI.SetAddButtonState(false); // 取消add button状态
         }
     }
 } 

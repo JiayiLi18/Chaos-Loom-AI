@@ -2,12 +2,15 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using Voxels;
+using UnityEngine.Events;
+using System.Runtime.CompilerServices;
 
 public class VoxelInventorySlot : MonoBehaviour
 {
     [SerializeField] private RawImage iconImage;
     [SerializeField] private TextMeshProUGUI nameText;
     [SerializeField] private Image frameImage;
+    [SerializeField] private Button editButton;
     [SerializeField] private Color selectedColor = new Color(0.055f, 0.9f, 0.21f, 1f);
     [SerializeField] private Color normalColor = new Color(0.23f, 0.23f, 0.23f, 1f);
     
@@ -15,14 +18,31 @@ public class VoxelInventorySlot : MonoBehaviour
     private bool _isSelected;
     
     public VoxelDefinition VoxelDef => _voxelDef;
-    public ushort slotId ; //slot的id就是voxel的唯一typeId
+    public ushort slotId; //slot的id就是voxel的唯一typeId
 
-    private void Awake()
+    public event UnityAction<ushort> OnEditClicked;
+
+
+    private void OnEnable()
     {
         // 确保组件引用正确
         if (iconImage == null)
         {
             Debug.LogError($"[VoxelInventorySlot] RawImage component not assigned on {gameObject.name}");
+        }
+
+        // 设置编辑按钮点击事件
+        if (editButton != null)
+        {
+            editButton.onClick.AddListener(() => OnEditClicked?.Invoke(slotId));
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (editButton != null)
+        {
+            editButton.onClick.RemoveAllListeners();
         }
     }
     
@@ -31,6 +51,7 @@ public class VoxelInventorySlot : MonoBehaviour
         _voxelDef = def;
         if (def != null)
         {
+            slotId = def.typeId;
             // 使用体素的贴图作为图标
             if (def.texture != null)
             {
@@ -50,12 +71,22 @@ public class VoxelInventorySlot : MonoBehaviour
             
             nameText.text = def.displayName;
             gameObject.SetActive(true);
+
+            // 如果是Air voxel，隐藏编辑按钮
+            if (editButton != null)
+            {
+                editButton.gameObject.SetActive(def.name != "Air");
+            }
         }
         else
         {
             Debug.LogWarning("[VoxelInventorySlot] Null VoxelDefinition provided");
             iconImage.texture = null;
             iconImage.color = Color.white;
+            if (editButton != null)
+            {
+                editButton.gameObject.SetActive(false);
+            }
             gameObject.SetActive(false);
         }
     }

@@ -75,6 +75,13 @@ namespace Voxels
         public void SetVoxel(Vector3Int localRaw, Voxel voxel)
         {
             if (!IsInsideWorld(localRaw)) return;
+
+            // 如果是空气方块且该位置不可破坏，则不执行设置
+            if (voxel.IsAir && !CanBreakVoxelAt(localRaw))
+            {
+                return;
+            }
+
             (SubChunk sc, Vector3Int local) = Map(localRaw);
             sc.SetVoxel(local, voxel);
 
@@ -120,6 +127,13 @@ namespace Voxels
 
         public void SetVoxelWorld(Vector3Int worldRaw, Voxel voxel)
         {
+            // 如果是空气方块且该位置不可破坏，则不执行设置
+            if (voxel.IsAir && !CanBreakVoxelAtWorld(worldRaw))
+            {
+                Debug.LogWarning($"Cannot set voxel at world position {worldRaw} because it is air and unbreakable");
+                return;
+            }
+
             Vector3Int localRaw = WorldToLocalVoxelCoord(worldRaw);
             SetVoxel(localRaw, voxel);
         }
@@ -286,6 +300,31 @@ namespace Voxels
                 }
             }
             return false;      // 射线在 maxDist 内没碰到方块
+        }
+
+        /// <summary>
+        /// 检查指定位置的体素是否可以被破坏
+        /// </summary>
+        public bool CanBreakVoxelAt(Vector3Int localPos)
+        {
+            // 检查是否在世界范围内
+            if (!IsInsideWorld(localPos))
+                return false;
+
+            // 检查Y=0的位置（地面层）是否不可破坏
+            if (localPos.y == 0)
+                return false;
+
+            return true;
+        }
+
+        /// <summary>
+        /// 检查指定世界坐标的体素是否可以被破坏
+        /// </summary>
+        public bool CanBreakVoxelAtWorld(Vector3Int worldRaw)
+        {
+            Vector3Int localRaw = WorldToLocalVoxelCoord(worldRaw);
+            return CanBreakVoxelAt(localRaw);
         }
     }
 }

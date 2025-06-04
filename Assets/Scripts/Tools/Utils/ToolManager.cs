@@ -105,11 +105,11 @@ public class ToolManager : MonoBehaviour
         if (IsInteractingWithUI()) return;
 
         // 切换工具：数字键 1-4
-        if (Input.GetKeyDown(KeyCode.Alpha1)) SwitchTool(0);
-        if (Input.GetKeyDown(KeyCode.Alpha2)) SwitchTool(1);
-        if (Input.GetKeyDown(KeyCode.Alpha3)) SwitchTool(2);
-        if (Input.GetKeyDown(KeyCode.Alpha4)) SwitchTool(3);
-        if (Input.GetKeyDown(KeyCode.Alpha5)) SwitchTool(4);
+        if (Input.GetKeyDown(KeyCode.Alpha1)) SwitchTool(1);
+        if (Input.GetKeyDown(KeyCode.Alpha2)) SwitchTool(2);
+        if (Input.GetKeyDown(KeyCode.Alpha3)) SwitchTool(3);
+        if (Input.GetKeyDown(KeyCode.Alpha4)) SwitchTool(4);
+        if (Input.GetKeyDown(KeyCode.Alpha0)) SwitchTool(0);
     }
 
     // 切换工具

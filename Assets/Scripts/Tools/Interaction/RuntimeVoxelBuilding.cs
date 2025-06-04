@@ -18,9 +18,10 @@ public class RuntimeVoxelBuilding : MonoBehaviour
     [Header("Color Editing")]
     [SerializeField] private InputActionReference colorModifyAction;
     private RuntimeVoxelColorEditor _colorEditor;
+
     [Header("UI")]
-    private VoxelInventoryUI _inventoryUI;
     private VoxelPreviewManager _previewManager;
+    private PaintingSystem _paintingSystem;
 
     private Camera _cam;
     private WorldGrid _world;
@@ -30,6 +31,21 @@ public class RuntimeVoxelBuilding : MonoBehaviour
     private byte _selectedType = 1;
 
     private bool _isInitialized = false;
+
+    // 添加一个静态实例，方便其他组件访问
+    public static RuntimeVoxelBuilding Instance { get; private set; }
+
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
 
     private void Start()
     {
@@ -53,13 +69,7 @@ public class RuntimeVoxelBuilding : MonoBehaviour
             enabled = false;
             return;
         }
-        // 订阅物品栏选择事件
-        _inventoryUI = FindAnyObjectByType<VoxelInventoryUI>();
-        if (_inventoryUI != null)
-        {
-            _inventoryUI.OnVoxelTypeSelected += HandleVoxelTypeSelected;
-        }
-
+        
         // 获取颜色编辑器组件
         _colorEditor = FindAnyObjectByType<RuntimeVoxelColorEditor>();
         if (_colorEditor == null)
@@ -74,6 +84,9 @@ public class RuntimeVoxelBuilding : MonoBehaviour
             Debug.LogWarning("找不到VoxelPreviewManager组件，预览功能将不可用");
         }
 
+        // 获取绘画系统
+        _paintingSystem = FindAnyObjectByType<PaintingSystem>();
+
         _isInitialized = true;
     }
 
@@ -83,6 +96,8 @@ public class RuntimeVoxelBuilding : MonoBehaviour
         {
             InitializeComponents();
         }
+
+        // 启用所有组件
         if (colorModifyAction != null && colorModifyAction.action != null)
         {
             colorModifyAction.action.Enable();
@@ -90,10 +105,6 @@ public class RuntimeVoxelBuilding : MonoBehaviour
         if (_colorEditor != null)
         {
             _colorEditor.enabled = true;
-        }
-        if (_inventoryUI != null)
-        {
-            _inventoryUI.enabled = true;
         }
         if (_previewManager != null)
         {
@@ -103,13 +114,10 @@ public class RuntimeVoxelBuilding : MonoBehaviour
 
     private void OnDisable()
     {
+        // 禁用所有组件
         if (colorModifyAction != null && colorModifyAction.action != null)
         {
             colorModifyAction.action.Disable();
-        }
-        if (_inventoryUI != null)
-        {
-            _inventoryUI.enabled = false;
         }
         if (_colorEditor != null)
         {
@@ -122,12 +130,36 @@ public class RuntimeVoxelBuilding : MonoBehaviour
         }
     }
 
+    private void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+    }
+
+    // 提供一个公共方法来设置当前选中的方块类型
+    public void SetSelectedVoxelType(byte typeId)
+    {
+        _selectedType = typeId;
+    }
+
     private void Update()
     {
         if (!_isEnabled) return;
 
         //如果鼠标悬停在UI上，则不更新
         if (EventSystem.current.IsPointerOverGameObject())
+        {
+            if (_previewManager != null)
+            {
+                _previewManager.HidePreview();
+            }
+            return;
+        }
+
+        //如果正在绘画，则不更新
+        if (_paintingSystem != null && _paintingSystem.isEnabled)
         {
             if (_previewManager != null)
             {
@@ -156,9 +188,9 @@ public class RuntimeVoxelBuilding : MonoBehaviour
         }
 
         // 正常的方块放置/删除逻辑
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(1))
         {
-            // 左键删除方块
+            // 右键删除方块
             if (_hoverVoxel.x != -999)
             {
                 _world.SetVoxelWorld(_hoverVoxel, Voxel.Air);
@@ -166,9 +198,9 @@ public class RuntimeVoxelBuilding : MonoBehaviour
                 VoxelColorOverride.Instance.ClearVoxelColor(_hoverVoxel);
             }
         }
-        else if (Input.GetMouseButtonDown(1))
+        else if (Input.GetMouseButtonDown(0))
         {
-            // 右键放置方块
+            // 左键放置方块
             if (_hoverVoxel.x != -999)
             {
                 Vector3Int placePos = _hoverVoxel + _hoverNormal;
@@ -214,24 +246,6 @@ public class RuntimeVoxelBuilding : MonoBehaviour
                     _hoverNormal = hitNormal;
                 }
             }
-        }
-    }
-
-    private void HandleVoxelTypeSelected(VoxelDefinition def)
-    {
-        if (def != null)
-        {
-            _selectedType = (byte)def.typeId;
-        }
-    }
-
-    private void OnDestroy()
-    {
-        // 取消订阅事件
-        var inventory = FindAnyObjectByType<VoxelInventoryUI>();
-        if (inventory != null)
-        {
-            inventory.OnVoxelTypeSelected -= HandleVoxelTypeSelected;
         }
     }
 }

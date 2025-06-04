@@ -24,13 +24,14 @@ public class PhotoInventoryUI : MonoBehaviour
     [SerializeField] private Color selectedColor = new Color(0.055f, 0.9f, 0.21f, 1f);
     [SerializeField] private Color normalColor = new Color(0.23f, 0.23f, 0.23f, 1f);
 
-    public static string _photoDirectory;
-    public static string _currentSelectedPhotoPath;
+    private static string _photoDirectory;
+    private static string _currentSelectedPhotoPath;
     private Image _currentSelectedFrame;
     private bool _isInitialized = false;
 
     // 暴露当前选中的纹理
     public Texture CurrentTexture { get; private set; }
+    public string CurrentPhotoPath => _currentSelectedPhotoPath;
     public static string FolderPath = "Photos";
 
     // 添加照片选择事件
@@ -142,6 +143,8 @@ public class PhotoInventoryUI : MonoBehaviour
 
     private void SelectPhoto(string filePath, Texture2D tex, Image frameImage)
     {
+        Debug.Log($"SelectPhoto called with path: {filePath}");
+        
         // Reset previous selection if exists
         if (_currentSelectedFrame != null)
         {
@@ -149,6 +152,7 @@ public class PhotoInventoryUI : MonoBehaviour
         }
 
         _currentSelectedPhotoPath = filePath;
+        Debug.Log($"Set _currentSelectedPhotoPath to: {_currentSelectedPhotoPath}");
         _currentSelectedFrame = frameImage;
         
         if (previewDisplayImage != null)
@@ -162,9 +166,10 @@ public class PhotoInventoryUI : MonoBehaviour
 
         // 更新当前纹理
         CurrentTexture = tex;
+        Debug.Log($"Current texture set, null? {CurrentTexture == null}");
 
         // 触发选择事件
-        Debug.Log("Triggering photo selected event");
+        Debug.Log($"Triggering photo selected event with path: {CurrentPhotoPath}");
         OnPhotoSelected?.Invoke();
 
         SetPreviewActive(true);
@@ -198,6 +203,7 @@ public class PhotoInventoryUI : MonoBehaviour
 
     private void SetPreviewActive(bool active)
     {
+        Debug.Log($"SetPreviewActive called with active: {active}");
         if (photoPreviewUI != null)
         {
             photoPreviewUI.SetActive(active);
@@ -208,6 +214,7 @@ public class PhotoInventoryUI : MonoBehaviour
                     _currentSelectedFrame.color = normalColor;
                     _currentSelectedFrame = null;
                 }
+                Debug.Log("Clearing photo selection state");
                 _currentSelectedPhotoPath = null;
                 if (previewDisplayImage != null)
                 {

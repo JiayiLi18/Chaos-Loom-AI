@@ -13,6 +13,8 @@ public class PlayerMove : MonoBehaviour
     [SerializeField] private float groundCheckDistance = 0.3f;
     [SerializeField] private LayerMask groundLayer; // 用于地面检测的层
     [SerializeField] private float flySpeed = 10f;
+    [SerializeField] private float flyAcceleration = 5f; // 飞行加速度
+    [SerializeField] private float flyDeceleration = 3f; // 飞行减速度
     [SerializeField] private float doubleTapTimeThreshold = 0.3f; // 双击检测的时间阈值
     public static bool canLook = true; // 是否可以自如旋转相机
     private float smoothSpeed = 10f; // 插值速度，可根据需要调整
@@ -36,6 +38,7 @@ public class PlayerMove : MonoBehaviour
     private InputAction JumpAction;
     private InputAction lookLockerAction;
     private InputAction verticalMoveAction; // 垂直移动控制
+    private Vector3 currentFlyVelocity; // 当前飞行速度
 
     // 用于跟踪相机旋转
     private float currentRotationX = 0f;
@@ -131,7 +134,6 @@ public class PlayerMove : MonoBehaviour
 
     void Update()
     {
-        Debug.Log("IsGrounded: " + IsGrounded());
         // 如果正在与UI交互，禁用所有玩家输入
         if (IsInteractingWithUI())
         {
@@ -238,12 +240,30 @@ public class PlayerMove : MonoBehaviour
             else if (currentMode == MovementMode.Flying)
             {
                 moveDirection.y = verticalInput;
-                rb.velocity = new Vector3(moveDirection.x * flySpeed, moveDirection.y * flySpeed, moveDirection.z * flySpeed);
+                moveDirection.Normalize();
+                
+                // 计算目标速度
+                Vector3 targetVelocity = moveDirection * flySpeed;
+                
+                // 使用加速度平滑过渡到目标速度
+                currentFlyVelocity = Vector3.Lerp(
+                    currentFlyVelocity,
+                    targetVelocity,
+                    flyAcceleration * Time.fixedDeltaTime
+                );
+                
+                rb.velocity = currentFlyVelocity;
             }
         }
         else if (currentMode == MovementMode.Flying)
         {
-            rb.velocity = Vector3.zero; // 在飞行模式下，没有输入时完全停止
+            // 在没有输入时，平滑减速到停止
+            currentFlyVelocity = Vector3.Lerp(
+                currentFlyVelocity,
+                Vector3.zero,
+                flyDeceleration * Time.fixedDeltaTime
+            );
+            rb.velocity = currentFlyVelocity;
         }
     }
 
@@ -311,11 +331,13 @@ public class PlayerMove : MonoBehaviour
         if (currentMode == MovementMode.Walking)
         {
             rb.useGravity = true;
+            currentFlyVelocity = Vector3.zero; // 重置飞行速度
         }
         else
         {
             rb.useGravity = false;
             rb.velocity = Vector3.zero;
+            currentFlyVelocity = Vector3.zero; // 初始化飞行速度
         }
     }
 }

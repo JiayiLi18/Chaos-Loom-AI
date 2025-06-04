@@ -29,6 +29,7 @@ public struct VoxelCommand
     public string voxel_name;
     public string texture_path;
     public string error;
+    public string operation; // 'create' or 'update'
 }
 
 [System.Serializable]
@@ -99,8 +100,11 @@ public static class MessageParser
     [System.Serializable]
     private class Commands
     {
-        public TextureCommand texture;
-        public VoxelCommand voxel;
+        public TextureCommand[] textures;
+        public VoxelCommand[] voxels;
         public DatabaseCommand database;
+
+        public TextureCommand texture => textures != null && textures.Length > 0 ? textures[0] : new TextureCommand();
+        public VoxelCommand voxel => voxels != null && voxels.Length > 0 ? voxels[0] : new VoxelCommand();
     }
 }

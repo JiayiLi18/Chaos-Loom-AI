@@ -136,27 +136,49 @@ public sealed class TextureLibrary : MonoBehaviour
             return id;
         }
 
-        // 如果不是 RGBA32，就转换一下
-        if (tex.format != TextureFormat.RGBA32)
+        const int targetSize = 16; // 强制所有纹理为16x16
+
+        // Create a new texture with the correct size and format
+        Texture2D processedTex = new Texture2D(targetSize, targetSize, TextureFormat.RGBA32, false);
+        
+        // If the source texture has a different size, resize it
+        if (tex.width != targetSize || tex.height != targetSize || tex.format != TextureFormat.RGBA32)
         {
-            Texture2D converted = new Texture2D(tex.width, tex.height, TextureFormat.RGBA32, false);
-            converted.SetPixels(tex.GetPixels());
-            converted.Apply(false); // 不生成 mipmap
-            converted.name = tex.name; // 保留原名称以便查找
-            tex = converted;
+            // Create a temporary RenderTexture for resizing
+            RenderTexture rt = RenderTexture.GetTemporary(targetSize, targetSize, 0);
+            RenderTexture.active = rt;
+            
+            // Copy and resize the source texture
+            Graphics.Blit(tex, rt);
+            
+            // Read the pixels back
+            processedTex.ReadPixels(new Rect(0, 0, targetSize, targetSize), 0, 0);
+            processedTex.Apply(false);
+            
+            // Clean up
+            RenderTexture.active = null;
+            RenderTexture.ReleaseTemporary(rt);
         }
-        tex.wrapMode = TextureWrapMode.Repeat;
-        tex.filterMode = FilterMode.Point;
+        else
+        {
+            // If size is already correct, just copy the pixels
+            processedTex.SetPixels(tex.GetPixels());
+            processedTex.Apply(false);
+        }
 
-        // 添加到纹理列表
-        _textures.Add(tex);
+        processedTex.name = tex.name; // Keep the original name
+        processedTex.wrapMode = TextureWrapMode.Repeat;
+        processedTex.filterMode = FilterMode.Point;
 
-        // 实际索引是列表位置+1（0保留给默认贴图）
-        id = _textures.Count; // _textures.Count已经是列表最后一项的索引+1了
-        _lookup[tex.name] = id;
+        // Add to texture list
+        _textures.Add(processedTex);
 
-        RebuildArray();          // ★ 可热插拔：立刻重建并更新所有材质
-        return id;      //返回的是贴图的 slice index，这个 index 就是 Texture2DArray 中的图层编号。
+        // Actual index is list position + 1 (0 reserved for default texture)
+        id = _textures.Count;
+        _lookup[processedTex.name] = id;
+
+        RebuildArray();
+        return id;
     }
 
     // 新增：从路径加载纹理
@@ -214,22 +236,19 @@ public sealed class TextureLibrary : MonoBehaviour
             return;
         }
 
+        const int textureSize = 16;
         Texture2DArray arr;
         // 检查是否已有现有的贴图数组
         if (Array == null)
         {
-            // 首次创建：加载或创建默认贴图数组
-            arr = Voxels.VoxelResources.DefaultTextureArray;
-            // 如果默认贴图数组只有一层，需要扩展它
-            if (arr.depth < _textures.Count + 1)
-            {
-                int size = arr.width;
-                Texture2DArray newArr = new Texture2DArray(size, size, _textures.Count + 1,
-                                        TextureFormat.RGBA32, false); // false 表示不生成 mipmap
+            // 首次创建：创建新的贴图数组
+            arr = new Texture2DArray(textureSize, textureSize, _textures.Count + 1,
+                                    TextureFormat.RGBA32, false); // false 表示不生成 mipmap
 
-                // 复制默认贴图(0号)
-                Graphics.CopyTexture(arr, 0, 0, newArr, 0, 0);
-                arr = newArr;
+            // 复制默认贴图(0号)
+            if (Voxels.VoxelResources.DefaultTextureArray != null)
+            {
+                Graphics.CopyTexture(Voxels.VoxelResources.DefaultTextureArray, 0, 0, arr, 0, 0);
             }
         }
         else
@@ -237,8 +256,7 @@ public sealed class TextureLibrary : MonoBehaviour
             // 已有贴图数组，检查是否需要扩展
             if (Array.depth < _textures.Count + 1)
             {
-                int size = Array.width;
-                Texture2DArray newArr = new Texture2DArray(size, size, _textures.Count + 1,
+                Texture2DArray newArr = new Texture2DArray(textureSize, textureSize, _textures.Count + 1,
                                         TextureFormat.RGBA32, false); // false 表示不生成 mipmap
 
                 // 复制原有的所有贴图，包括0号默认贴图

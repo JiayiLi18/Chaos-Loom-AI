@@ -60,7 +60,6 @@ public class PaintingSystem : MonoBehaviour
 
     private void Paint()
     {
-        Debug.Log("Attempting to paint...");
         Vector3 position = Input.mousePosition;
         if (paintCamera == null)
         {

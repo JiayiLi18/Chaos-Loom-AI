@@ -5,7 +5,7 @@ using UnityEngine;
 /// </summary>
 public class ChatWithAITool : Tool
 {
-    private RuntimeAIChat _aiChat;
+    [SerializeField] private RuntimeAIChat _aiChat;
 
     private void Start()
     {

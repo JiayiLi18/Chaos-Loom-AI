@@ -6,34 +6,60 @@ using Voxels;
 /// </summary>
 public class VoxelBuildingTool : Tool
 {
-    private RuntimeVoxelBuilding building;
-
+    private VoxelInventoryUI voxelInventoryUI;
+    private RuntimeVoxelBuilding runtimeVoxelBuilding;
 
     void OnEnable()
     {
-        if (building == null)
+        if (voxelInventoryUI == null)
         {
-            building = FindAnyObjectByType<RuntimeVoxelBuilding>();
+            voxelInventoryUI = FindAnyObjectByType<VoxelInventoryUI>();
+        }
+        if (runtimeVoxelBuilding == null)
+        {
+            runtimeVoxelBuilding = RuntimeVoxelBuilding.Instance;
         }
     }
 
     void OnDisable()
     {
-        if (building != null)
+        if (voxelInventoryUI != null)
         {
-            building.enabled = false;
+            voxelInventoryUI.enabled = false;
+        }
+        if (runtimeVoxelBuilding != null)
+        {
+            runtimeVoxelBuilding.enabled = false;
         }
     }
 
     public override void ActivateTool()
     {
         base.ActivateTool();
-        building.enabled = true;
+        
+        if (voxelInventoryUI != null)
+        {
+            voxelInventoryUI.gameObject.SetActive(true);
+            voxelInventoryUI.enabled = true;
+            voxelInventoryUI.SetAddButtonState(false); // 确保building模式下add button是关闭的
+        }
+        if (runtimeVoxelBuilding != null)
+        {
+            runtimeVoxelBuilding.enabled = true;
+        }
     }
 
     public override void DeactivateTool()
     {
         base.DeactivateTool();
-        building.enabled = false;
+        
+        if (voxelInventoryUI != null)
+        {
+            voxelInventoryUI.enabled = false;
+        }
+        if (runtimeVoxelBuilding != null)
+        {
+            runtimeVoxelBuilding.enabled = false;
+        }
     }
 } 

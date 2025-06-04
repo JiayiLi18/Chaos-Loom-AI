@@ -9,6 +9,8 @@ public class PaintingToolUI : MonoBehaviour
 {
     [Header("系统引用")]
     private PaintingSystem paintingSystem;    // 引用核心绘制系统
+    [SerializeField] private GameObject paintablePanel;
+    [SerializeField] private ColorPickerUI colorPicker; // 颜色选择器引用
 
     [Header("UI组件")]
     [SerializeField] private GameObject paintingToolPanel;
@@ -29,7 +31,7 @@ public class PaintingToolUI : MonoBehaviour
     [SerializeField] private Color unselectedToolColor = new Color(0.23f, 0.23f, 0.23f, 1f);   // 未选中工具的颜色
 
     private bool _isEraser = false;          // 是否为橡皮擦模式
-    private Color _lastPaintColor;           // 记录上次的绘制颜色
+    private Color _lastPaintColor = Color.black;           // 记录上次的绘制颜色，默认为黑色
     private bool _isInitialized = false;
 
     void Start()
@@ -47,9 +49,12 @@ public class PaintingToolUI : MonoBehaviour
         if (paintingSystem != null)
         {
             paintingSystem.enabled = true;
+            paintingSystem.SetEnabled(true);
         }
         if (paintingToolPanel != null)
             paintingToolPanel.SetActive(true);
+        if (paintablePanel != null)
+            paintablePanel.SetActive(true);
 
         UpdateToolSelected(_isEraser);
     }
@@ -61,10 +66,21 @@ public class PaintingToolUI : MonoBehaviour
             paintingSystem = FindAnyObjectByType<PaintingSystem>();
             if (paintingSystem == null)
             {
+                Debug.LogError("[PaintingToolUI] PaintingSystem not found!");
                 enabled = false;
                 return;
             }
         }
+
+        // 初始化ColorPicker
+        if (colorPicker == null)
+        {
+            Debug.LogError("[PaintingToolUI] ColorPickerUI not found!");
+            enabled = false;
+            return;
+        }
+        colorPicker.onColorChanged.AddListener(SetPaintColor);
+
         //通过名字获取所有UI组件
         //previewImage = paintingToolPanel.transform.Find("PreviewImage").GetComponent<RawImage>();
         brushButton = paintingToolPanel.transform.Find("BrushButton").GetComponent<Button>();
@@ -83,7 +99,12 @@ public class PaintingToolUI : MonoBehaviour
             if (paintingSystem != null)
             {
                 paintingSystem.SetBrushSize(brushSizeSlider.value);
+                paintingSystem.SetPaintColor(_lastPaintColor); // 确保初始化时设置默认颜色
             }
+        }
+        else
+        {
+            Debug.LogError("[PaintingToolUI] BrushSizeSlider not found!");
         }
 
         // 初始化工具按钮
@@ -112,6 +133,8 @@ public class PaintingToolUI : MonoBehaviour
         }
         if (paintingToolPanel != null)
             paintingToolPanel.SetActive(false);
+        if (paintablePanel != null)
+            paintablePanel.SetActive(false);
     }
 
     private void OnBrushSizeChanged(float value)
@@ -144,6 +167,7 @@ public class PaintingToolUI : MonoBehaviour
 
     private void OnBrushSelected()
     {
+        Debug.Log("[PaintingToolUI] OnBrushSelected");
         _isEraser = false;
         UpdateToolVisuals(false);
         if (paintingSystem != null)
@@ -157,6 +181,7 @@ public class PaintingToolUI : MonoBehaviour
 
     private void OnEraserSelected()
     {
+        Debug.Log("[PaintingToolUI] OnEraserSelected");
         _isEraser = true;
         UpdateToolVisuals(true);
         if (paintingSystem != null)
@@ -164,7 +189,6 @@ public class PaintingToolUI : MonoBehaviour
             paintingSystem.SetEnabled(true);
             paintingSystem.SetPaintColor(new Color(0, 0, 0, 0));
         }
-
     }
 
     private void UpdateToolVisuals(bool isEraser)

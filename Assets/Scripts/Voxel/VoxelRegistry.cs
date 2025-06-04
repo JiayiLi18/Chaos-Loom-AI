@@ -115,8 +115,8 @@ namespace Voxels
                 return existing; // already registered
             }
 
-            // Find the next available ID
-            ushort nextId = 0;
+            // 找到最小的可用ID
+            ushort nextId = 1; // 从1开始，因为0是Air
             while (nextId < s_Definitions.Count && s_Definitions[nextId] != null)
             {
                 nextId++;
@@ -148,6 +148,49 @@ namespace Voxels
             
             Debug.Log("VoxelRegistry: Registry cleared, ready for reinitialization");
             OnRegistryChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// 注销一个体素定义
+        /// </summary>
+        public static bool Unregister(ushort id)
+        {
+            if (id >= s_Definitions.Count)
+            {
+                Debug.LogError($"[VoxelRegistry] ID {id} is out of range");
+                return false;
+            }
+
+            var def = s_Definitions[id];
+            if (def == null)
+            {
+                Debug.LogError($"[VoxelRegistry] Definition with ID {id} is already null");
+                return false;
+            }
+
+            try
+            {
+                // 从字典中移除
+                if (!string.IsNullOrEmpty(def.name))
+                {
+                    s_IdByName.Remove(def.name);
+                }
+
+                // 销毁ScriptableObject
+                UnityEngine.Object.Destroy(def);
+                
+                // 从列表中移除
+                s_Definitions[id] = null;
+
+                Debug.Log($"[VoxelRegistry] Successfully unregistered voxel with ID {id}");
+                OnRegistryChanged?.Invoke();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[VoxelRegistry] Error while unregistering voxel {id}: {ex.Message}");
+                return false;
+            }
         }
     }
 }

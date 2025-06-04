@@ -195,10 +195,20 @@ namespace Voxels
                     // 更新所有贴图索引
                     def.UpdateTextureIfNeeded();
 
-                    // 使用JSON中的ID进行注册
-                    ushort assignedId = v.id > 0 ? 
-                        VoxelRegistry.RegisterWithId(def, (ushort)v.id) : 
-                        VoxelRegistry.Register(def);
+                    // 修改注册逻辑：特殊处理ID为0的情况
+                    ushort assignedId;
+                    if (v.id == 0)
+                    {
+                        // 对于ID为0的体素（air），强制使用ID 0
+                        assignedId = VoxelRegistry.RegisterWithId(def, 0);
+                    }
+                    else
+                    {
+                        // 其他情况保持原有逻辑
+                        assignedId = v.id > 0 ? 
+                            VoxelRegistry.RegisterWithId(def, (ushort)v.id) : 
+                            VoxelRegistry.Register(def);
+                    }
                     
                     // 检查注册是否成功
                     if (assignedId == 0 && v.id > 0)
@@ -531,6 +541,59 @@ namespace Voxels
                 return new List<VoxelEntry>();
             }
             return _cache.voxels;
+        }
+
+        /// <summary>
+        /// 删除指定ID的体素
+        /// </summary>
+        /// <param name="typeId">要删除的体素ID</param>
+        /// <returns>是否删除成功</returns>
+        public bool DeleteVoxel(ushort typeId)
+        {
+            if (_cache == null || !_isInitialized)
+            {
+                Debug.LogError("[VoxelJsonDB] Database not initialized!");
+                return false;
+            }
+
+            try
+            {
+                // 保护基础体素类型（Air和基础方块）
+                if (typeId == 0 || typeId == 1)
+                {
+                    Debug.LogWarning($"[VoxelJsonDB] Cannot delete essential voxel type with ID {typeId}!");
+                    return false;
+                }
+
+                // 查找要删除的体素
+                var entry = _cache.voxels.Find(v => v.id == typeId);
+                if (entry == null)
+                {
+                    Debug.LogError($"[VoxelJsonDB] Voxel with ID {typeId} not found!");
+                    return false;
+                }
+
+                // 保存要删除的体素信息
+                string voxelName = entry.name;
+                
+                // 从数据库中移除
+                _cache.voxels.Remove(entry);
+
+                // 从Registry中注销
+                VoxelRegistry.Unregister(typeId);
+
+                // 保存数据库更改
+                _cache.revision = DateTime.UtcNow.ToString("o");
+                SaveDatabase();
+
+                Debug.Log($"[VoxelJsonDB] Successfully deleted voxel '{voxelName}' with ID {typeId}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[VoxelJsonDB] Failed to delete voxel {typeId}: {ex.Message}\nStackTrace: {ex.StackTrace}");
+                return false;
+            }
         }
     }
 } 

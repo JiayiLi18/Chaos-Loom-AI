@@ -71,10 +71,10 @@ namespace Voxels
             int centerZ = WorldGrid.WorldSize / 2;
             
             // 计算平台的起始和结束位置（8x8的平台）
-            int startX = centerX - 4;
-            int startZ = centerZ - 4;
-            int endX = centerX + 4;
-            int endZ = centerZ + 4;
+            int startX = centerX - 32;
+            int startZ = centerZ - 32;
+            int endX = centerX + 32;
+            int endZ = centerZ + 32;
 
             // 确保不会超出世界边界
             startX = Mathf.Clamp(startX, 0, WorldGrid.WorldSize - 1);
@@ -87,7 +87,16 @@ namespace Voxels
             {
                 for (int z = startZ; z < endZ; ++z)
                 {
-                    grid.SetVoxel(new Vector3Int(x, 0, z), new Voxel(1));
+                    //如果voxelType 2存在，则使用voxelType 2，否则使用voxelType 1
+                    var voxel = new Voxel(2);
+                    if (voxel.Definition != null)
+                    {
+                        grid.SetVoxel(new Vector3Int(x, 0, z), voxel);
+                    }
+                    else
+                    {
+                        grid.SetVoxel(new Vector3Int(x, 0, z), new Voxel(1));
+                    }
                 }
             }
         }
