@@ -83,17 +83,14 @@ public class ToolManager : MonoBehaviour
             if (context.phase == InputActionPhase.Performed)
             {
                 float scrollValue = context.ReadValue<float>();
-                Debug.Log("Scroll value: " + scrollValue);
 
                 if (scrollValue > 0f)
                 {
                     SwitchTool((currentIndex + 1) % tools.Length);
-                    Debug.Log("Switching to next tool");
                 }
                 else if (scrollValue < 0f)
                 {
                     SwitchTool((currentIndex - 1 + tools.Length) % tools.Length);
-                    Debug.Log("Switching to previous tool");
                 }
             }
         }
@@ -124,6 +121,17 @@ public class ToolManager : MonoBehaviour
 
         currentIndex = index;
         currentTool = tools[currentIndex];
-        currentTool.ActivateTool();
+        
+        // 延迟一帧激活新工具，避免UI冲突
+        StartCoroutine(DelayedActivateTool());
+    }
+    
+    private System.Collections.IEnumerator DelayedActivateTool()
+    {
+        yield return null; // 等待一帧
+        if (currentTool != null)
+        {
+            currentTool.ActivateTool();
+        }
     }
 }

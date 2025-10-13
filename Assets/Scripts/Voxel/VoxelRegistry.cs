@@ -88,7 +88,7 @@ namespace Voxels
             if (def.texture != null)
             {
                 def.UpdateTextureIfNeeded();
-                Debug.Log($"Registered voxel '{def.name}' with texture '{def.texture.name}' at index {def.sliceIndex}");
+                //Debug.Log($"Registered voxel '{def.name}' with texture '{def.texture.name}' at index {def.sliceIndex}");
             }
 
             s_Definitions[requestedId] = def;
@@ -131,7 +131,6 @@ namespace Voxels
         /// </summary>
         public static void Clear()
         {
-            Debug.Log("VoxelRegistry: Clearing all voxel definitions");
             
             // 销毁所有ScriptableObject以防止内存泄漏
             foreach (var def in s_Definitions)

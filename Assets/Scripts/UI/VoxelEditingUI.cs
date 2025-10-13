@@ -15,13 +15,15 @@ public class VoxelEditingUI : MonoBehaviour
     [SerializeField] public TMP_InputField nameInput;
     [SerializeField] public TMP_InputField descriptionInput;
 
-    [Header("Dependencies")]
-    [SerializeField] private VoxelSystemManager voxelSystem;
-    [SerializeField] private RenderTexture paintingRenderTexture;
-    [SerializeField] private PaintingToolUI paintingToolUI;
+    [Header("Face Color Settings")]
+    [SerializeField] private ColorPickerUI[] faceColorPickers = new ColorPickerUI[6]; // 6个面的颜色选择器
+    [SerializeField] private string[] faceNames = { "+X", "-X", "+Y", "-Y", "+Z", "-Z" }; // 面名称
     private bool _isInitialized = false;
-    private bool _isEditingMode = false;
-    private ushort _editingVoxelId;
+    public bool _isEditingMode = false;
+    public ushort _editingVoxelId;
+    
+    // 颜色状态
+    private Color32[] _faceColors = new Color32[6];
 
     private void Start()
     {
@@ -50,8 +52,6 @@ public class VoxelEditingUI : MonoBehaviour
         }
         
         voxelEditingPanel.SetActive(true);
-        if (paintingToolUI != null)
-            paintingToolUI.enabled = true;
     }
 
     private void InitializeComponents()
@@ -65,22 +65,9 @@ public class VoxelEditingUI : MonoBehaviour
         if (descriptionInput == null)
             descriptionInput = voxelEditingPanel.transform.Find("DescriptionInput").GetComponent<TMP_InputField>();
 
-        if (voxelSystem == null)
-        {
-            voxelSystem = FindAnyObjectByType<VoxelSystemManager>();
-            if (voxelSystem == null)
-            {
-                Debug.LogError("[VoxelEditingUI] VoxelSystemManager not found!");
-                enabled = false;
-                return;
-            }
-        }
-        if (paintingToolUI == null)
-        {
-            paintingToolUI = FindAnyObjectByType<PaintingToolUI>();
-            if (paintingToolUI == null)
-                Debug.LogError("[VoxelEditingUI] PaintingToolUI not found!");
-        }
+        
+        // 初始化颜色选择器
+        InitializeColorPickers();
 
         // 先移除所有已有的监听器，防止重复添加
         if (comfirmBtn != null)
@@ -96,6 +83,57 @@ public class VoxelEditingUI : MonoBehaviour
 
         _isInitialized = true;
     }
+    
+    private void InitializeColorPickers()
+    {
+        // 初始化面颜色选择器
+        for (int i = 0; i < 6; i++)
+        {
+            if (faceColorPickers[i] == null)
+            {
+                string facePickerPath = $"FaceColorPickers/{faceNames[i]}ColorPicker";
+                faceColorPickers[i] = voxelEditingPanel.transform.Find(facePickerPath)?.GetComponent<ColorPickerUI>();
+            }
+        }
+            
+        // 设置事件监听器
+        SetupColorPickerEvents();
+        
+        // 初始化默认颜色
+        InitializeDefaultColors();
+    }
+    
+    private void SetupColorPickerEvents()
+    {
+        // 面颜色选择器事件
+        for (int i = 0; i < 6; i++)
+        {
+            if (faceColorPickers[i] != null)
+            {
+                int faceIndex = i; // 捕获循环变量
+                faceColorPickers[i].onColorChanged.AddListener((color) => {
+                    _faceColors[faceIndex] = color;
+                });
+            }
+        }
+    }
+    
+    private void InitializeDefaultColors()
+    {
+        // 设置默认颜色为白色
+        for (int i = 0; i < 6; i++)
+        {
+            _faceColors[i] = Color.white;
+        }
+        
+        // 更新UI
+        for (int i = 0; i < 6; i++)
+        {
+            if (faceColorPickers[i] != null)
+                faceColorPickers[i].SetColor(_faceColors[i]);
+        }
+    }
+    
 
     private void OnDisable()
     {
@@ -103,8 +141,6 @@ public class VoxelEditingUI : MonoBehaviour
         {
             voxelEditingPanel.SetActive(false);
         }
-        if (paintingToolUI != null)
-            paintingToolUI.enabled = false;
         
         // 在禁用时移除所有监听器
         if (comfirmBtn != null)
@@ -151,35 +187,24 @@ public class VoxelEditingUI : MonoBehaviour
 
     private void Confirm()
     {
-        if (voxelSystem == null)
-        {
-            Debug.LogError("[VoxelEditingUI] VoxelSystemManager not found!");
-            return;
-        }
-
         if (string.IsNullOrEmpty(nameInput.text))
         {
             Debug.LogWarning("[VoxelEditingUI] Please enter a name for the voxel!");
             return;
         }
 
-        // 从RenderTexture创建Texture2D
-        Texture2D texture = voxelSystem.CreateTextureFromRenderTexture(paintingRenderTexture);
-        if (texture == null)
-        {
-            Debug.LogError("[VoxelEditingUI] Failed to create texture from RenderTexture!");
-            return;
-        }
-
+        // UI只负责提供数据，不直接调用Runtime组件
+        // RuntimeVoxelCreator会监听确认事件或主动获取数据
+        Debug.Log($"[VoxelEditingUI] Confirm button clicked - data ready for collection");
+        
+        // 根据模式进行后续处理
         if (_isEditingMode)
         {
-            // 修改现有的voxel
-            voxelSystem.ModifyVoxelType(_editingVoxelId, nameInput.text, descriptionInput.text, texture);
+            SetCreateMode(); // 退出编辑模式
         }
         else
         {
-            // 创建新的voxel
-            voxelSystem.CreateVoxelType(nameInput.text, descriptionInput.text, texture);
+            Reset(); // 重置表单
         }
     }
 
@@ -200,6 +225,76 @@ public class VoxelEditingUI : MonoBehaviour
             // 清空所有字段
             nameInput.text = "";
             descriptionInput.text = "";
+            ResetColors();
         }
+    }
+    
+    
+    
+    
+    /// <summary>
+    /// 重置所有颜色设置
+    /// </summary>
+    private void ResetColors()
+    {
+        // 重置所有面颜色为白色
+        for (int i = 0; i < 6; i++)
+        {
+            _faceColors[i] = Color.white;
+        }
+        
+        // 更新UI
+        for (int i = 0; i < 6; i++)
+        {
+            if (faceColorPickers[i] != null)
+                faceColorPickers[i].SetColor(_faceColors[i]);
+        }
+    }
+    
+    // ========== 公共方法：供RuntimeVoxelCreator调用 ==========
+    
+    /// <summary>
+    /// 获取体素名称（供RuntimeVoxelCreator调用）
+    /// </summary>
+    public string GetVoxelName()
+    {
+        return nameInput != null ? nameInput.text : "";
+    }
+    
+    /// <summary>
+    /// 获取体素描述（供RuntimeVoxelCreator调用）
+    /// </summary>
+    public string GetVoxelDescription()
+    {
+        return descriptionInput != null ? descriptionInput.text : "";
+    }
+    
+    /// <summary>
+    /// 获取当前6个面的颜色设置（供RuntimeVoxelCreator调用）
+    /// </summary>
+    public Color32[] GetCurrentFaceColors()
+    {
+        Color32[] colors = new Color32[6];
+        for (int i = 0; i < 6; i++)
+        {
+            colors[i] = _faceColors[i];
+        }
+        return colors;
+    }
+    
+    /// <summary>
+    /// 获取是否处于编辑模式（供RuntimeVoxelCreator调用）
+    /// </summary>
+    public bool IsEditingMode()
+    {
+        return _isEditingMode;
+    }
+    
+    /// <summary>
+    /// 获取正在编辑的体素ID（供RuntimeVoxelCreator调用）
+    /// </summary>
+    public ushort GetEditingVoxelId()
+    {
+        return _editingVoxelId;
     }
 } 

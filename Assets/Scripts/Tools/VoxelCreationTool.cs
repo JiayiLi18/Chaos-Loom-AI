@@ -2,48 +2,36 @@ using UnityEngine;
 using Voxels;
 
 /// <summary>
-/// 体素创建工具，只负责工具的激活/禁用状态
+/// 体素创建工具，负责工具的激活/禁用状态和UI管理
 /// </summary>
 public class VoxelCreationTool : Tool
 {
-    private VoxelInventoryUI voxelInventoryUI;
+    [SerializeField] private RuntimeVoxelBuilding runtimeVoxelBuilding;
 
     void OnEnable()
     {
-        if (voxelInventoryUI == null)
+        if (runtimeVoxelBuilding == null)
         {
-            voxelInventoryUI = FindAnyObjectByType<VoxelInventoryUI>();
-        }
-    }
-
-    void OnDisable()
-    {
-        if (voxelInventoryUI != null)
-        {
-            voxelInventoryUI.enabled = false;
+            Debug.LogError("找不到RuntimeVoxelBuilding组件，请确保场景中存在该组件");
         }
     }
 
     public override void ActivateTool()
     {
         base.ActivateTool();
-        
-        if (voxelInventoryUI != null)
+        if (runtimeVoxelBuilding != null)
         {
-            voxelInventoryUI.gameObject.SetActive(true);
-            voxelInventoryUI.enabled = true;
-            voxelInventoryUI.SetAddButtonState(true); // 自动激活add button
+            runtimeVoxelBuilding.enabled = true;
+            runtimeVoxelBuilding.EnterCreationMode();
         }
     }
 
     public override void DeactivateTool()
     {
         base.DeactivateTool();
-        
-        if (voxelInventoryUI != null)
+        if (runtimeVoxelBuilding != null)
         {
-            voxelInventoryUI.enabled = false;
-            voxelInventoryUI.SetAddButtonState(false); // 取消add button状态
+            runtimeVoxelBuilding.enabled = false;
         }
     }
 } 

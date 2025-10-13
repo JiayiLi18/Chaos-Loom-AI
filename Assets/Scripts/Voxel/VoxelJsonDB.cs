@@ -106,8 +106,6 @@ namespace Voxels
         {
             try
             {
-                Debug.Log($"[VoxelJsonDB] JSON路径: {_jsonPath}");
-                
                 if (!File.Exists(_jsonPath))
                 {
                     // 首次运行：复制模板或创建新的
@@ -116,9 +114,6 @@ namespace Voxels
 
                 string json = File.ReadAllText(_jsonPath);
                 _cache = JsonUtility.FromJson<VoxelDB>(json);
-               // _lastModified = File.GetLastWriteTime(_jsonPath);
-
-                Debug.Log($"[VoxelJsonDB] Loaded database with {_cache.voxels.Count} voxel definitions");
 
                 // 注册所有体素到系统
                 RegisterVoxelsFromDb();
@@ -168,8 +163,6 @@ namespace Voxels
                             {
                                 var faceTex = LoadTextureFile(v.face_textures[i]);
                                 def.faceTextures[i].texture = faceTex;
-                                Debug.Log($"[VoxelJsonDB] Loading face texture {i} for {v.name}: {v.face_textures[i]}");
-                                
                                 // 记录第一个有效的面贴图
                                 if (firstFaceTex == null && faceTex != null)
                                 {
@@ -183,13 +176,13 @@ namespace Voxels
                     if (!string.IsNullOrEmpty(v.texture))
                     {
                         def.texture = LoadTextureFile(v.texture);
-                        Debug.Log($"[VoxelJsonDB] Loading texture for {v.name}: {v.texture}");
+                        //Debug.Log($"[VoxelJsonDB] Loading texture for {v.name}: {v.texture}");
                     }
                     // 如果没有默认贴图但有面贴图，使用第一个面贴图作为默认贴图
                     else if (firstFaceTex != null)
                     {
                         def.texture = firstFaceTex;
-                        Debug.Log($"[VoxelJsonDB] Using first face texture as default texture for {v.name}");
+                        //Debug.Log($"[VoxelJsonDB] Using first face texture as default texture for {v.name}");
                     }
                     
                     // 更新所有贴图索引
@@ -219,7 +212,7 @@ namespace Voxels
                     
                     // 更新数据库中的 ID（以防是新分配的）
                     v.id = assignedId;
-                    Debug.Log($"[VoxelJsonDB] Registered voxel '{v.name}' with ID {assignedId}");
+                    //Debug.Log($"[VoxelJsonDB] Registered voxel '{v.name}' with ID {assignedId}");
                 }
                 catch (Exception ex)
                 {
@@ -314,12 +307,111 @@ namespace Voxels
                 _cache.revision = DateTime.UtcNow.ToString("o");
                 SaveDatabase();
 
-                Debug.Log($"[VoxelJsonDB] Added new voxel '{uniqueName}' with ID {typeId}");
                 return typeId;
             }
             catch (Exception ex)
             {
                 Debug.LogError($"[VoxelJsonDB] Failed to add voxel {name}: {ex.Message}");
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// 添加新的体素到数据库（支持6个面不同纹理）
+        /// </summary>
+        public ushort AddVoxelWithFaces(string name, Color32 baseColor, Texture2D[] faceTextures = null, string description = "", bool isTransparent = false)
+        {
+            if (_cache == null || !_isInitialized)
+            {
+                Debug.LogError("[VoxelJsonDB] Database not initialized!");
+                return 0;
+            }
+            
+            // 检查名称是否为空
+            if (string.IsNullOrEmpty(name))
+            {
+                Debug.LogError("[VoxelJsonDB] Cannot add voxel with empty name!");
+                return 0;
+            }
+
+            if (faceTextures == null || faceTextures.Length != 6)
+            {
+                Debug.LogError("[VoxelJsonDB] faceTextures must be an array of 6 textures!");
+                return 0;
+            }
+
+            try
+            {
+                // 生成唯一的名字
+                string uniqueName = GenerateUniqueName(name);
+                if (uniqueName != name)
+                {
+                    Debug.Log($"[VoxelJsonDB] Name '{name}' already exists, using '{uniqueName}' instead");
+                }
+                
+                // 创建新的体素条目
+                var entry = new VoxelEntry
+                {
+                    name = uniqueName,
+                    texture = faceTextures[0] != null ? faceTextures[0].name + ".png" : "",
+                    face_textures = new string[6],
+                    base_color = new int[] { baseColor.r, baseColor.g, baseColor.b },
+                    description = description,
+                    is_transparent = isTransparent
+                };
+                
+                // 设置面纹理文件名
+                for (int i = 0; i < 6; i++)
+                {
+                    entry.face_textures[i] = faceTextures[i] != null ? faceTextures[i].name + ".png" : "";
+                }
+                
+                // 生成ScriptableObject并注册
+                var def = ScriptableObject.CreateInstance<VoxelDefinition>();
+                def.name = uniqueName;
+                def.displayName = uniqueName;
+                def.baseColor = baseColor;
+                def.description = description;
+                def.isTransparent = isTransparent;
+                def.texture = faceTextures[0]; // 使用第一个面作为默认纹理
+                
+                // 设置面纹理
+                def.faceTextures = new VoxelDefinition.FaceTexture[6];
+                for (int i = 0; i < 6; i++)
+                {
+                    def.faceTextures[i] = new VoxelDefinition.FaceTexture();
+                    def.faceTextures[i].texture = faceTextures[i];
+                }
+                
+                // 更新纹理索引
+                def.UpdateTextureIfNeeded();
+                
+                // 让 VoxelRegistry 自动分配 typeId
+                ushort typeId = VoxelRegistry.Register(def);
+                
+                // 检查注册是否成功
+                if (typeId == 0)
+                {
+                    Debug.LogError($"[VoxelJsonDB] Failed to register voxel '{uniqueName}'");
+                    UnityEngine.Object.Destroy(def); // 清理未使用的对象
+                    return 0;
+                }
+                
+                // 更新数据库中的 ID
+                entry.id = typeId;
+                
+                // 添加到数据库
+                _cache.voxels.Add(entry);
+                
+                // 更新revision和保存
+                _cache.revision = DateTime.UtcNow.ToString("o");
+                SaveDatabase();
+
+                return typeId;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[VoxelJsonDB] Failed to add voxel with faces {name}: {ex.Message}");
                 return 0;
             }
         }
@@ -410,8 +502,6 @@ namespace Voxels
             {
                 string json = JsonUtility.ToJson(_cache, true);
                 File.WriteAllText(_jsonPath, json);
-                //_lastModified = File.GetLastWriteTime(_jsonPath);
-                Debug.Log("[VoxelJsonDB] Database saved successfully");
             }
             catch (Exception ex)
             {
@@ -476,14 +566,12 @@ namespace Voxels
 
                 // 从 Resources/VoxelTextures 加载纹理
                 string resourcePath = $"VoxelTextures/{Path.GetFileNameWithoutExtension(fileName)}";
-                Debug.Log($"[VoxelJsonDB] Attempting to load texture from Resources path: {resourcePath}");
+                //Debug.Log($"[VoxelJsonDB] Attempting to load texture from Resources path: {resourcePath}");
                 
                 Texture2D originalTex = Resources.Load<Texture2D>(resourcePath);
                 
                 if (originalTex != null)
                 {
-                    Debug.Log($"[VoxelJsonDB] Successfully loaded texture: {originalTex.name}, size: {originalTex.width}x{originalTex.height}, format: {originalTex.format}, isReadable: {originalTex.isReadable}");
-                    
                     // 创建可读的副本
                     Texture2D readableTex = new Texture2D(originalTex.width, originalTex.height, TextureFormat.RGBA32, false);
                     RenderTexture rt = RenderTexture.GetTemporary(originalTex.width, originalTex.height);
@@ -508,8 +596,6 @@ namespace Voxels
                     readableTex.filterMode = FilterMode.Point;
                     readableTex.wrapMode = TextureWrapMode.Repeat;
                     readableTex.name = Path.GetFileNameWithoutExtension(fileName);
-                    
-                    Debug.Log($"[VoxelJsonDB] Created readable copy of texture: {readableTex.name}, size: {readableTex.width}x{readableTex.height}, format: {readableTex.format}, isReadable: {readableTex.isReadable}");
                     
                     return readableTex;
                 }

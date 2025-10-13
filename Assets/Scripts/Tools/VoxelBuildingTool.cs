@@ -2,64 +2,37 @@ using UnityEngine;
 using Voxels;
 
 /// <summary>
-/// 体素建造工具，只负责工具的激活/禁用状态
+/// 体素建造工具，负责工具的激活/禁用状态和UI管理
 /// </summary>
 public class VoxelBuildingTool : Tool
 {
-    private VoxelInventoryUI voxelInventoryUI;
-    private RuntimeVoxelBuilding runtimeVoxelBuilding;
+    [SerializeField] private RuntimeVoxelBuilding runtimeVoxelBuilding;
 
     void OnEnable()
     {
-        if (voxelInventoryUI == null)
-        {
-            voxelInventoryUI = FindAnyObjectByType<VoxelInventoryUI>();
-        }
         if (runtimeVoxelBuilding == null)
         {
-            runtimeVoxelBuilding = RuntimeVoxelBuilding.Instance;
+            Debug.LogError("找不到RuntimeVoxelBuilding组件，请确保场景中存在该组件");
         }
     }
 
-    void OnDisable()
-    {
-        if (voxelInventoryUI != null)
-        {
-            voxelInventoryUI.enabled = false;
-        }
-        if (runtimeVoxelBuilding != null)
-        {
-            runtimeVoxelBuilding.enabled = false;
-        }
-    }
 
     public override void ActivateTool()
     {
         base.ActivateTool();
-        
-        if (voxelInventoryUI != null)
-        {
-            voxelInventoryUI.gameObject.SetActive(true);
-            voxelInventoryUI.enabled = true;
-            voxelInventoryUI.SetAddButtonState(false); // 确保building模式下add button是关闭的
-        }
         if (runtimeVoxelBuilding != null)
         {
             runtimeVoxelBuilding.enabled = true;
+            runtimeVoxelBuilding.EnterBuildingMode();
         }
     }
 
     public override void DeactivateTool()
     {
         base.DeactivateTool();
-        
-        if (voxelInventoryUI != null)
-        {
-            voxelInventoryUI.enabled = false;
-        }
         if (runtimeVoxelBuilding != null)
         {
             runtimeVoxelBuilding.enabled = false;
         }
     }
-} 
+}

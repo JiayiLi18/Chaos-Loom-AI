@@ -104,8 +104,6 @@ public sealed class TextureLibrary : MonoBehaviour
     /// </summary>
     public void RebuildFull()
     {
-        Debug.Log("TextureLibrary: Performing full rebuild of texture library");
-        
         // 清空当前纹理库
         _textures.Clear();
         _lookup.Clear();
@@ -232,7 +230,6 @@ public sealed class TextureLibrary : MonoBehaviour
         {
             // 如果没有找到任何纹理，使用默认纹理数组
             Array = Voxels.VoxelResources.DefaultTextureArray;
-            Debug.Log("TextureLibrary: Using default texture array only");
             return;
         }
 
@@ -302,8 +299,6 @@ public sealed class TextureLibrary : MonoBehaviour
 
         // 通过VoxelResources全局更新所有材质
         Voxels.VoxelResources.UpdateMaterialsWithTextureArray(arr);
-
-        Debug.Log($"TextureLibrary: Rebuilt texture array with default texture and {_textures.Count} additional textures");
     }
 
     // 初始化纹理数组

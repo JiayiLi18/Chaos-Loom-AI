@@ -7,6 +7,10 @@ using UnityEngine.InputSystem;
 /// </summary>
 public class RuntimeVoxelBuilding : MonoBehaviour
 {
+    [Header("References")]
+    private VoxelInventoryUI voxelInventoryUI;
+    private VoxelPreviewManager _previewManager;
+
     [Header("Building Settings")]
     [SerializeField] private float maxDistance = 5f;
     [SerializeField] private LayerMask voxelLayer;
@@ -15,13 +19,6 @@ public class RuntimeVoxelBuilding : MonoBehaviour
     [SerializeField] private Color hoverColor = new Color(1f, 1f, 1f, 0.5f);
     [SerializeField] private Color placeColor = new Color(0f, 1f, 0f, 0.3f);
 
-    [Header("Color Editing")]
-    [SerializeField] private InputActionReference colorModifyAction;
-    private RuntimeVoxelColorEditor _colorEditor;
-
-    [Header("UI")]
-    private VoxelPreviewManager _previewManager;
-    private PaintingSystem _paintingSystem;
 
     private Camera _cam;
     private WorldGrid _world;
@@ -70,22 +67,24 @@ public class RuntimeVoxelBuilding : MonoBehaviour
             return;
         }
         
-        // 获取颜色编辑器组件
-        _colorEditor = FindAnyObjectByType<RuntimeVoxelColorEditor>();
-        if (_colorEditor == null)
-        {
-            Debug.LogWarning("找不到RuntimeVoxelColorEditor组件，颜色编辑功能将不可用");
-        }
-
         // 获取预览管理器
         _previewManager = FindAnyObjectByType<VoxelPreviewManager>();
         if (_previewManager == null)
         {
             Debug.LogWarning("找不到VoxelPreviewManager组件，预览功能将不可用");
         }
-
-        // 获取绘画系统
-        _paintingSystem = FindAnyObjectByType<PaintingSystem>();
+        
+        // 获取VoxelInventoryUI并订阅事件
+        voxelInventoryUI = FindAnyObjectByType<VoxelInventoryUI>();
+        if (voxelInventoryUI == null)
+        {
+            Debug.LogWarning("找不到VoxelInventoryUI组件，库存功能将不可用");
+        }
+        else
+        {
+            // 订阅UI事件
+            voxelInventoryUI.OnVoxelTypeSelected += OnVoxelTypeSelected;
+        }
 
         _isInitialized = true;
     }
@@ -97,41 +96,40 @@ public class RuntimeVoxelBuilding : MonoBehaviour
             InitializeComponents();
         }
 
-        // 启用所有组件
-        if (colorModifyAction != null && colorModifyAction.action != null)
-        {
-            colorModifyAction.action.Enable();
-        }
-        if (_colorEditor != null)
-        {
-            _colorEditor.enabled = true;
-        }
+        // 启用预览管理器
         if (_previewManager != null)
         {
             _previewManager.enabled = true;
+        }
+
+        if (voxelInventoryUI != null)
+        {
+            voxelInventoryUI.enabled = true;
         }
     }
 
     private void OnDisable()
     {
-        // 禁用所有组件
-        if (colorModifyAction != null && colorModifyAction.action != null)
-        {
-            colorModifyAction.action.Disable();
-        }
-        if (_colorEditor != null)
-        {
-            _colorEditor.enabled = false;
-        }
+        // 禁用预览管理器
         if (_previewManager != null)
         {
             _previewManager.HidePreview();
             _previewManager.enabled = false;
         }
+        if (voxelInventoryUI != null)
+        {
+            voxelInventoryUI.enabled = false;
+        }
     }
 
     private void OnDestroy()
     {
+        // 取消事件订阅
+        if (voxelInventoryUI != null)
+        {
+            voxelInventoryUI.OnVoxelTypeSelected -= OnVoxelTypeSelected;
+        }
+        
         if (Instance == this)
         {
             Instance = null;
@@ -143,6 +141,56 @@ public class RuntimeVoxelBuilding : MonoBehaviour
     {
         _selectedType = typeId;
     }
+    
+    /// <summary>
+    /// 处理UI发出的方块类型选择事件
+    /// </summary>
+    private void OnVoxelTypeSelected(VoxelDefinition voxelDef)
+    {
+        if (voxelDef != null)
+        {
+            SetSelectedVoxelType((byte)voxelDef.typeId);
+            Debug.Log($"[RuntimeVoxelBuilding] Selected voxel type: {voxelDef.displayName} (ID: {voxelDef.typeId})");
+        }
+    }
+    
+    /// <summary>
+    /// 控制Add按钮状态，间接控制VoxelEditingUI
+    /// </summary>
+    /// <param name="enable">true为打开Add按钮（创建模式），false为关闭</param>
+    public void SetAddButtonState(bool enable)
+    {
+        if (voxelInventoryUI != null)
+        {
+            voxelInventoryUI.SetAddButtonState(enable);
+            voxelInventoryUI.voxelEditingUI.enabled = enable;
+        }
+    }
+    
+    /// <summary>
+    /// 切换到创建模式（打开Add按钮）
+    /// </summary>
+    public void EnterCreationMode()
+    {
+        SetAddButtonState(true);
+    }
+    
+    /// <summary>
+    /// 切换到建造模式（关闭Add按钮）
+    /// </summary>
+    public void EnterBuildingMode()
+    {
+        SetAddButtonState(false);
+    }
+    
+    /// <summary>
+    /// 获取Add按钮当前状态
+    /// </summary>
+    public bool IsAddButtonSelected()
+    {
+        return voxelInventoryUI != null && voxelInventoryUI.IsAddButtonSelected();
+    }
+
 
     private void Update()
     {
@@ -158,16 +206,6 @@ public class RuntimeVoxelBuilding : MonoBehaviour
             return;
         }
 
-        //如果正在绘画，则不更新
-        if (_paintingSystem != null && _paintingSystem.isEnabled)
-        {
-            if (_previewManager != null)
-            {
-                _previewManager.HidePreview();
-            }
-            return;
-        }
-
         UpdateHoverVoxel();
         UpdatePreview();
         HandleInput();
@@ -175,18 +213,6 @@ public class RuntimeVoxelBuilding : MonoBehaviour
 
     private void HandleInput()
     {
-        bool isColorEditMode = colorModifyAction != null && colorModifyAction.action.IsPressed();
-
-        if (isColorEditMode && _colorEditor != null)
-        {
-            // 在颜色编辑模式下，使用已知的hover位置进行颜色编辑
-            if (_hoverVoxel.x != -999)
-            {
-                _colorEditor.HandleColorEditingAtPosition(_hoverVoxel);
-            }
-            return;
-        }
-
         // 正常的方块放置/删除逻辑
         if (Input.GetMouseButtonDown(1))
         {
@@ -194,8 +220,6 @@ public class RuntimeVoxelBuilding : MonoBehaviour
             if (_hoverVoxel.x != -999)
             {
                 _world.SetVoxelWorld(_hoverVoxel, Voxel.Air);
-                // 同时清除颜色覆盖
-                VoxelColorOverride.Instance.ClearVoxelColor(_hoverVoxel);
             }
         }
         else if (Input.GetMouseButtonDown(0))
@@ -213,15 +237,11 @@ public class RuntimeVoxelBuilding : MonoBehaviour
     {
         if (_previewManager == null) return;
 
-        bool isColorEditMode = colorModifyAction != null && colorModifyAction.action.IsPressed();
-        Color previewColor = isColorEditMode && _colorEditor != null ? 
-            _colorEditor.GetCurrentColor() : hoverColor;
-
         _previewManager.UpdatePreview(
             _hoverVoxel,
             _hoverNormal,
-            previewColor,
-            !isColorEditMode, // 在颜色编辑模式下不显示放置预览
+            hoverColor,
+            true, // 显示放置预览
             placeColor  // 使用placeColor作为放置预览的颜色
         );
     }

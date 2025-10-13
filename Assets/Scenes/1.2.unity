@@ -1039,6 +1039,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 418652820}
+  - component: {fileID: 418652821}
   m_Layer: 0
   m_Name: AIAgent
   m_TagString: Untagged
@@ -1061,6 +1062,32 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &418652821
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 418652816}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fceea34531529b04db6315ca1a572223, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  canFollow: 0
+  player: {fileID: 0}
+  followDistance: 3
+  updateInterval: 0.5
+  canFacePlayer: 0
+  rotationSpeed: 5
+  facePlayerDistance: 2
+  isInteractable: 0
+  interactionRadius: 2
+  interactionKey: 101
+  interactionPrompt: {fileID: 0}
+  onInteract:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &473137677 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 7193357519028933772, guid: 7adc5592b3840fc42962e10c6eae9a25,
@@ -1767,6 +1794,8 @@ GameObject:
   - component: {fileID: 917927940}
   - component: {fileID: 917927941}
   - component: {fileID: 917927943}
+  - component: {fileID: 917927945}
+  - component: {fileID: 917927944}
   m_Layer: 0
   m_Name: AIManager
   m_TagString: Untagged
@@ -1801,9 +1830,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 450f833598516774883f9eb0f75775f3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  apiUrl_General: http://127.0.0.1:8000/ask_general
-  apiUrl_Texture: http://127.0.0.1:8000/generate_texture
+  apiUrl_Events: http://127.0.0.1:8000/events
+  apiUrl_Permission: http://127.0.0.1:8000/permission
 --- !u!114 &917927943
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 917927938}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f095bb16e583cd4fa1b0186dddb52f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  chatUIReference: {fileID: 0}
+  voxelDBReference: {fileID: 933587484}
+--- !u!114 &917927944
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1812,11 +1855,64 @@ MonoBehaviour:
   m_GameObject: {fileID: 917927938}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8f095bb16e583cd4fa1b0186dddb52f4, type: 3}
+  m_Script: {fileID: 11500000, guid: 8e7495e68bfe39549a05d81530879ccf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  chatUIReference: {fileID: 0}
-  voxelDBReference: {fileID: 933587484}
+  gameStateManager: {fileID: 0}
+  autoFindGameStateManager: 1
+  testAutoMonitoring: 0
+  testManualUpdate: 0
+  testSettingsChange: 0
+--- !u!114 &917927945
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 917927938}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 88c174358c1dcd04eb1ae54fa38fc08a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  agentPosition: {x: 0, y: 0, z: 0}
+  playerPositionRel: {x: 0, y: 0, z: 0}
+  sixDirection:
+    up:
+      name: 
+      id: 
+      distance: 0
+    down:
+      name: 
+      id: 
+      distance: 0
+    front:
+      name: 
+      id: 
+      distance: 0
+    back:
+      name: 
+      id: 
+      distance: 0
+    left:
+      name: 
+      id: 
+      distance: 0
+    right:
+      name: 
+      id: 
+      distance: 0
+  nearbyVoxels: 
+  agentImages: []
+  pendingPlans: []
+  lastCommands: []
+  maxPendingPlans: 3
+  maxLastCommands: 3
+  enableAutoMonitoring: 1
+  voxelScanRadius: 2
+  playerTransform: {fileID: 0}
+  agentTransform: {fileID: 0}
+  worldGrid: {fileID: 0}
 --- !u!114 &929138202 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 4981729785426963790, guid: 7adc5592b3840fc42962e10c6eae9a25,
@@ -3562,7 +3658,7 @@ GameObject:
   - component: {fileID: 1775633191}
   - component: {fileID: 1775633195}
   m_Layer: 5
-  m_Name: paiting canvas
+  m_Name: painting canvas
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3593,7 +3689,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1775633189}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f7baccedcc3ead34f92bb6f550475026, type: 3}
   m_Name: 

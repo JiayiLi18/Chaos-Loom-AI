@@ -77,6 +77,27 @@ public class VoxelSystemManager : MonoBehaviour
     }
 
     /// <summary>
+    /// 创建新的体素类型（支持6个面不同纹理）
+    /// </summary>
+    public void CreateVoxelTypeWithFaces(string name, string description, Texture2D[] faceTextures)
+    {
+        if (!_isInitialized || string.IsNullOrEmpty(name) || faceTextures == null || faceTextures.Length != 6)
+        {
+            Debug.LogError("[VoxelSystemManager] Cannot create voxel type with faces: Invalid parameters or not initialized");
+            return;
+        }
+
+        // 注册新的体素（使用第一个面作为主纹理）
+        ushort newId = voxelJsonDB.AddVoxelWithFaces(name, Color.white, faceTextures, description, false);
+        if (newId > 0)
+        {
+            var newDef = VoxelRegistry.GetDefinition(newId);
+            onVoxelCreated?.Invoke(newDef);
+            Debug.Log($"[VoxelSystemManager] Created voxel type '{name}' with faces, ID {newId}");
+        }
+    }
+
+    /// <summary>
     /// 修改现有的体素类型
     /// </summary>
     public void ModifyVoxelType(ushort typeId, string name = null, string description = null, Texture2D newTexture = null)
@@ -129,6 +150,72 @@ public class VoxelSystemManager : MonoBehaviour
         voxelJsonDB.SaveDatabase();
         onVoxelModified?.Invoke(def);
         Debug.Log($"[VoxelSystemManager] Modified voxel type {typeId}");
+    }
+
+    /// <summary>
+    /// 修改现有的体素类型（支持6个面不同纹理）
+    /// </summary>
+    public void ModifyVoxelTypeWithFaces(ushort typeId, string name = null, string description = null, Texture2D[] faceTextures = null)
+    {
+        if (!_isInitialized)
+        {
+            Debug.LogError("[VoxelSystemManager] Not initialized!");
+            return;
+        }
+
+        var def = VoxelRegistry.GetDefinition(typeId);
+        if (def == null)
+        {
+            Debug.LogError($"[VoxelSystemManager] VoxelDefinition with ID {typeId} not found!");
+            return;
+        }
+
+        // 更新名称和描述
+        if (!string.IsNullOrEmpty(name))
+        {
+            def.name = name;
+            def.displayName = name;
+        }
+
+        if (!string.IsNullOrEmpty(description))
+        {
+            def.description = description;
+        }
+
+        // 更新面纹理
+        if (faceTextures != null && faceTextures.Length == 6)
+        {
+            // 更新每个面的纹理
+            for (int i = 0; i < 6; i++)
+            {
+                if (faceTextures[i] != null)
+                {
+                    // 确保面纹理数组已初始化
+                    if (def.faceTextures == null || def.faceTextures.Length != 6)
+                    {
+                        def.faceTextures = new VoxelDefinition.FaceTexture[6];
+                        for (int j = 0; j < 6; j++)
+                        {
+                            def.faceTextures[j] = new VoxelDefinition.FaceTexture();
+                        }
+                    }
+                    
+                    def.faceTextures[i].texture = faceTextures[i];
+                    def.faceTextures[i].sliceIndex = TextureLibrary.SafeRegister(faceTextures[i]);
+                }
+            }
+            
+            // 更新默认纹理（使用第一个面）
+            if (faceTextures[0] != null)
+            {
+                def.texture = faceTextures[0];
+                def.sliceIndex = TextureLibrary.SafeRegister(faceTextures[0]);
+            }
+        }
+
+        voxelJsonDB.SaveDatabase();
+        onVoxelModified?.Invoke(def);
+        Debug.Log($"[VoxelSystemManager] Modified voxel type {typeId} with faces");
     }
 
     /// <summary>

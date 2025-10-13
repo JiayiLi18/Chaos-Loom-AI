@@ -57,7 +57,6 @@ namespace Voxels
                 // 2)创建一个基本的空数组
                 if (_defaultTexArray == null)
                 {
-                    Debug.Log("[VoxelResources] Default texture array not found in Resources");
                     _defaultTexArray = CreateEmptyTextureArray();
                 }
                 
@@ -87,7 +86,6 @@ namespace Voxels
             arr.wrapMode = TextureWrapMode.Repeat;
             arr.filterMode = FilterMode.Point;
             
-            Debug.Log("[VoxelResources] Created empty texture array with 1 white texture");
             return arr;
         }
         
@@ -104,7 +102,6 @@ namespace Voxels
                 if (currentTex == null)
                 {
                     material.SetTexture("_Blocks", DefaultTextureArray);
-                    Debug.Log($"[VoxelResources] Assigned default texture array to material '{material.name}'");
                 }
             }
         }
@@ -143,7 +140,6 @@ namespace Voxels
             // 缓存新的贴图数组作为默认值
             _defaultTexArray = newArray;
             
-            Debug.Log($"[VoxelResources] Updated all materials with new texture array (updated {updatedCount} material instances)");
         }
     }
 }

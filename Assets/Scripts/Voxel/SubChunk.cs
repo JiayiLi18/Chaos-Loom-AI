@@ -209,6 +209,14 @@ namespace Voxels
 
             int NN = Size * Size;
 
+            // 释放旧的边界缓存数组（如果存在）
+            if (_borderPX.IsCreated) _borderPX.Dispose();
+            if (_borderNX.IsCreated) _borderNX.Dispose();
+            if (_borderPY.IsCreated) _borderPY.Dispose();
+            if (_borderNY.IsCreated) _borderNY.Dispose();
+            if (_borderPZ.IsCreated) _borderPZ.Dispose();
+            if (_borderNZ.IsCreated) _borderNZ.Dispose();
+
             // 初始化边界缓存数组
             _borderPX = new NativeArray<ushort>(NN, Allocator.Persistent);
             _borderNX = new NativeArray<ushort>(NN, Allocator.Persistent);
@@ -219,6 +227,11 @@ namespace Voxels
 
             // Build palette
             int count = VoxelRegistry.Count;
+            
+            // 释放旧的palette和slices数组（如果存在）
+            if (_palette.IsCreated) _palette.Dispose();
+            if (_slices.IsCreated) _slices.Dispose();
+            
             _palette = new NativeArray<Color32>(count, Allocator.Persistent);
             _slices = new NativeArray<float>(count, Allocator.Persistent);
 
@@ -231,9 +244,16 @@ namespace Voxels
                     maxTypeId = def.typeId;
             }
 
+            // 释放旧的面贴图索引数组（如果存在）
+            if (_faceSlices.IsCreated) _faceSlices.Dispose();
+            
             // 创建面贴图索引数组
             _faceSlices = new NativeArray<float>((maxTypeId + 1) * 6, Allocator.Persistent);
 
+            // 释放旧的颜色覆盖数组（如果存在）
+            if (_colorOverrides.IsCreated) _colorOverrides.Dispose();
+            if (_hasColorOverride.IsCreated) _hasColorOverride.Dispose();
+            
             // 创建颜色覆盖数组
             var colorOverrides = new NativeArray<Color32>(VoxelCount, Allocator.Persistent);
             var hasColorOverride = new NativeArray<bool>(VoxelCount, Allocator.Persistent);
@@ -318,7 +338,7 @@ namespace Voxels
             // Add validation checks
             if (_verts.Length == 0)
             {
-                Debug.LogWarning($"[SubChunk {name}] No vertices generated in mesh job");
+                //Debug.LogWarning($"[SubChunk {name}] No vertices generated in mesh job");
                 return;
             }
 
@@ -334,18 +354,13 @@ namespace Voxels
             // Add validation before setting collider mesh
             if (mesh.vertexCount == 0)
             {
-                Debug.LogWarning($"[SubChunk {name}] Mesh has no vertices after generation");
+                //Debug.LogWarning($"[SubChunk {name}] Mesh has no vertices after generation");
                 return;
             }
             
             _filter.sharedMesh = mesh;
             _collider.sharedMesh = mesh;   // Mesh 更新同时刷新 Collider
 
-            // 在网格和碰撞体更新后重新生成UV岛图
-            if (TryGetComponent(out Paintable paintable))
-            {
-                PaintManager.instance.initTextures(paintable);
-            }
         }
         #endregion
 

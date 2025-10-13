@@ -4,7 +4,7 @@ using System;
 namespace Voxels
 {
     /// <summary>
-    /// 负责管理体素预览框的显示
+    /// 负责管理体素预览框的显示,即HoverBox和PlaceBox
     /// </summary>
     public class VoxelPreviewManager : MonoBehaviour
     {
@@ -69,26 +69,26 @@ namespace Voxels
             _showPlacePreview = showPlacePreview;
 
             bool showPreview = position.x != -999;
-            _hoverRenderer.enabled = showPreview;
-            _placeRenderer.enabled = showPreview && showPlacePreview;
+            if (_hoverRenderer != null)
+                _hoverRenderer.enabled = showPreview;
+            if (_placeRenderer != null)
+                _placeRenderer.enabled = showPreview && showPlacePreview;
 
             if (showPreview)
             {
                 // 更新颜色
-                _hoverRenderer.startColor = _hoverColor;
-                _hoverRenderer.endColor = _hoverColor;
+                if (_hoverRenderer != null)
+                {
+                    _hoverRenderer.startColor = _hoverColor;
+                    _hoverRenderer.endColor = _hoverColor;
+                    // 绘制预览框
+                    DrawWireBox(_hoverRenderer, position + Vector3.one * 0.5f, Vector3.one);
+                }
                 
-                if (_placeRenderer != null)
+                if (_placeRenderer != null && showPlacePreview)
                 {
                     _placeRenderer.startColor = _placeColor;
                     _placeRenderer.endColor = _placeColor;
-                }
-
-                // 绘制预览框
-                DrawWireBox(_hoverRenderer, position + Vector3.one * 0.5f, Vector3.one);
-                
-                if (showPlacePreview)
-                {
                     DrawWireFace(_placeRenderer, position + Vector3.one * 0.5f, Vector3.one, normal);
                 }
             }
@@ -99,8 +99,10 @@ namespace Voxels
         /// </summary>
         public void HidePreview()
         {
-            _hoverRenderer.enabled = false;
-            _placeRenderer.enabled = false;
+            if (_hoverRenderer != null)
+                _hoverRenderer.enabled = false;
+            if (_placeRenderer != null)
+                _placeRenderer.enabled = false;
         }
 
         private void DrawWireBox(LineRenderer renderer, Vector3 center, Vector3 size)

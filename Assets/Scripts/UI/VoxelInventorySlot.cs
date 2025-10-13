@@ -55,7 +55,7 @@ public class VoxelInventorySlot : MonoBehaviour
             // 使用体素的贴图作为图标
             if (def.texture != null)
             {
-                Debug.Log($"[VoxelInventorySlot] Setting texture for {def.displayName}: {def.texture.name}, size: {def.texture.width}x{def.texture.height}, format: {def.texture.format}");
+                //Debug.Log($"[VoxelInventorySlot] Setting texture for {def.displayName}: {def.texture.name}, size: {def.texture.width}x{def.texture.height}, format: {def.texture.format}");
                 iconImage.texture = def.texture;
                 iconImage.color = Color.white; // 重置为白色以显示原始贴图颜色
                 
@@ -64,7 +64,7 @@ public class VoxelInventorySlot : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning($"[VoxelInventorySlot] No texture found for {def.displayName}, using color instead");
+                //Debug.LogWarning($"[VoxelInventorySlot] No texture found for {def.displayName}, using color instead");
                 iconImage.texture = null;
                 iconImage.color = def.baseColor;
             }

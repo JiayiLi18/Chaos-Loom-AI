@@ -44,8 +44,6 @@ public abstract class Tool : MonoBehaviour
     // 禁用工具时的处理
     public virtual void DeactivateTool()
     {
-        // 在此处执行工具禁用时的通用行为（例如，隐藏UI，停止音效等）
-        Debug.Log(toolName + " deactivated");
         if (uiButton != null)
         {
             uiButton.interactable = true;

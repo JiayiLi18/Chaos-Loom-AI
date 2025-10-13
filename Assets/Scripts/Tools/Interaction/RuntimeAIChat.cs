@@ -200,7 +200,7 @@ public class RuntimeAIChat : MonoBehaviour
             }
 
             // 先发送请求
-            apiClient.SendGeneralRequest(message, currentPhotoPath, _currentSessionId, isNewSession, HandleApiResponse);
+            // TODO: 发送请求
             
             // 发送用户消息（这会更新UI）
             chatUI.OnSendMessage();
@@ -239,17 +239,7 @@ public class RuntimeAIChat : MonoBehaviour
             chatUI.OnReceiveMessage(parsedMessage.answer);
 
             // 处理命令
-            if (commandProcessor != null)
-            {
-                commandProcessor.ProcessResponse(parsedMessage);
-                
-                // 如果是voxel相关操作，自动打开voxel inventory
-                if (parsedMessage.voxel.executed && parsedMessage.voxel.success && voxelInventoryUI != null)
-                {
-                    voxelInventoryUI.enabled = true;
-                    voxelInventoryUI.gameObject.SetActive(true);
-                }
-            }
+            // TODO: 处理命令
         }
         catch (System.Exception e)
         {

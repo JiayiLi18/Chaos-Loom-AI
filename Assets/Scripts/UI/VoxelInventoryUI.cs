@@ -10,7 +10,7 @@ public class VoxelInventoryUI : MonoBehaviour
     [SerializeField] private GameObject voxelInventoryPanel;
     private Transform slotsContainer;
     [SerializeField] private VoxelInventorySlot slotPrefab;
-    [SerializeField] private VoxelEditingUI voxelEditingUI;
+    public VoxelEditingUI voxelEditingUI;
 
     [SerializeField] private Button addButton;
     [SerializeField] private Button editButton;
@@ -28,8 +28,9 @@ public class VoxelInventoryUI : MonoBehaviour
     public VoxelInventorySlot _selectedSlot;
     private bool _isInitialized = false;
 
-    // 添加选择事件
+    // 事件系统
     public event System.Action<VoxelDefinition> OnVoxelTypeSelected;
+    public event System.Action<ushort> OnDeleteButtonClicked;
 
     private void OnEnable()
     {
@@ -37,70 +38,45 @@ public class VoxelInventoryUI : MonoBehaviour
         {
             InitializeComponents();
         }
-        voxelInventoryPanel.SetActive(true);
-        VoxelRegistry.OnRegistryChanged += HandleRegistryChanged;
         
-        // 订阅VoxelSystemManager的事件
-        if (voxelSystem != null)
+        // 简单直接地激活UI面板
+        if (voxelInventoryPanel != null)
         {
-            voxelSystem.onVoxelCreated.AddListener(HandleVoxelCreated);
-            voxelSystem.onVoxelDeleted.AddListener(HandleVoxelDeleted);
-            voxelSystem.onVoxelModified.AddListener(HandleVoxelModified);
+            voxelInventoryPanel.SetActive(true);
         }
-
-        // 启用建造功能
-        if (RuntimeVoxelBuilding.Instance != null)
-        {
-            RuntimeVoxelBuilding.Instance.enabled = true;
-        }
-
-        // 初始化时构建一次
-        RebuildInventory();
-
-        SetupButtons();
+        
+        // 刷新库存显示
+        RefreshInventory();
     }
 
     private void SetupButtons()
     {
-        // 添加add button的点击事件
+        // Add按钮 - 直接控制VoxelEditingUI的创建模式
         if (addButton != null)
         {
             addButton.onClick.RemoveAllListeners();
             addButton.onClick.AddListener(() => {
-                SetAddButtonState(!_isAddButtonSelected);
+                ToggleAddButton();
             });
         }
 
+        // Edit按钮 - 直接控制VoxelEditingUI的编辑模式
         if (editButton != null)
         {
             editButton.onClick.RemoveAllListeners();
             editButton.onClick.AddListener(() => {
                 if (_selectedSlot == null) return;
-                _isEditButtonSelected = !_isEditButtonSelected;
-                editButton.image.color = _isEditButtonSelected ? selectedColor : normalColor;
-                if (voxelEditingUI != null && _isEditButtonSelected)
-                {
-                    voxelEditingUI.gameObject.SetActive(true);
-                    voxelEditingUI.enabled = true;
-                    voxelEditingUI.SetEditMode(_selectedSlot.slotId);
-                }
-                else if (voxelEditingUI != null)
-                {
-                    voxelEditingUI.gameObject.SetActive(false);
-                    voxelEditingUI.enabled = false;
-                }
+                ToggleEditButton();
             });
         }
 
+        // Delete按钮 - 删除选中的voxel
         if (deleteButton != null)
         {
             deleteButton.onClick.RemoveAllListeners();
             deleteButton.onClick.AddListener(() => {
                 if (_selectedSlot == null) return;
-                if (voxelSystem != null)
-                {
-                    voxelSystem.DeleteVoxelType(_selectedSlot.slotId);
-                }
+                DeleteSelectedVoxel();
             });
         }
 
@@ -108,75 +84,153 @@ public class VoxelInventoryUI : MonoBehaviour
         if (addButton != null) addButton.image.color = normalColor;
         if (editButton != null) editButton.image.color = normalColor;
     }
-
+    
     /// <summary>
-    /// 设置add button的状态
+    /// 切换Add按钮状态，直接控制VoxelEditingUI
     /// </summary>
-    /// <param name="state">true为选中状态，false为未选中状态</param>
-    public void SetAddButtonState(bool state)
+    private void ToggleAddButton()
     {
-        _isAddButtonSelected = state;
-        if (addButton != null)
-        {
-            addButton.image.color = _isAddButtonSelected ? selectedColor : normalColor;
-        }
+        _isAddButtonSelected = !_isAddButtonSelected;
+        addButton.image.color = _isAddButtonSelected ? selectedColor : normalColor;
+        
         if (voxelEditingUI != null)
         {
-            // 只在创建模式下显示编辑UI
             if (_isAddButtonSelected)
             {
+                // 打开编辑UI并设置为创建模式
                 voxelEditingUI.gameObject.SetActive(true);
                 voxelEditingUI.enabled = true;
-                voxelEditingUI.SetCreateMode(); // 设置为创建模式
+                voxelEditingUI.SetCreateMode();
             }
             else
             {
-                voxelEditingUI.gameObject.SetActive(false);
+                // 关闭编辑UI
                 voxelEditingUI.enabled = false;
             }
         }
+        
     }
+    
+    /// <summary>
+    /// 切换Edit按钮状态，直接控制VoxelEditingUI
+    /// </summary>
+    private void ToggleEditButton()
+    {
+        _isEditButtonSelected = !_isEditButtonSelected;
+        editButton.image.color = _isEditButtonSelected ? selectedColor : normalColor;
+        
+        if (voxelEditingUI != null)
+        {
+            if (_isEditButtonSelected)
+            {
+                // 打开编辑UI并设置为编辑模式
+                voxelEditingUI.gameObject.SetActive(true);
+                voxelEditingUI.enabled = true;
+                voxelEditingUI.SetEditMode(_selectedSlot.slotId);
+            }
+            else
+            {
+                // 关闭编辑UI
+                voxelEditingUI.enabled = false;
+            }
+        }
+        
+    }
+    
+    /// <summary>
+    /// 删除选中的voxel
+    /// </summary>
+    private void DeleteSelectedVoxel()
+    {
+        if (_selectedSlot == null || voxelSystem == null) return;
+        
+        // 发出事件供Runtime组件监听
+        OnDeleteButtonClicked?.Invoke(_selectedSlot.slotId);
+        
+        // 直接删除
+        voxelSystem.DeleteVoxelType(_selectedSlot.slotId);
+    }
+
+    /// <summary>
+    /// 刷新库存显示
+    /// </summary>
+    private void RefreshInventory()
+    {
+        if (_isInitialized)
+        {
+            RebuildInventory();
+        }
+    }
+    
+    /// <summary>
+    /// 公共方法：设置Add按钮状态（供RuntimeVoxelBuilding调用）
+    /// </summary>
+    /// <param name="enable">true为打开Add按钮（创建模式），false为关闭</param>
+    public void SetAddButtonState(bool enable)
+    {
+        if (addButton == null) return;
+        
+        if (enable && !_isAddButtonSelected)
+        {
+            // 如果要求打开但当前未打开，则点击按钮
+            addButton.onClick.Invoke();
+        }
+        else if (!enable && _isAddButtonSelected)
+        {
+            // 如果要求关闭但当前已打开，则点击按钮
+            addButton.onClick.Invoke();
+        }
+    }
+    
+    /// <summary>
+    /// 公共方法：获取Add按钮当前状态
+    /// </summary>
+    public bool IsAddButtonSelected()
+    {
+        return _isAddButtonSelected;
+    }
+
+
 
     private void OnDisable()
     {
+        // 简单直接地停用UI面板
         if (voxelInventoryPanel != null)
         {
             voxelInventoryPanel.SetActive(false);
         }
+        
+        // 停用编辑UI
+        if (voxelEditingUI != null)
+        {
+            voxelEditingUI.enabled = false;
+        }
+    }
+    
+    private void OnDestroy()
+    {
+        // 清理事件订阅
         VoxelRegistry.OnRegistryChanged -= HandleRegistryChanged;
         
-        // 取消订阅VoxelSystemManager的事件
         if (voxelSystem != null)
         {
             voxelSystem.onVoxelCreated.RemoveListener(HandleVoxelCreated);
             voxelSystem.onVoxelDeleted.RemoveListener(HandleVoxelDeleted);
             voxelSystem.onVoxelModified.RemoveListener(HandleVoxelModified);
         }
-
-        // 禁用建造功能
-        if (RuntimeVoxelBuilding.Instance != null)
-        {
-            RuntimeVoxelBuilding.Instance.enabled = false;
-        }
-
-        if (voxelEditingUI != null)
-        {
-            voxelEditingUI.enabled = false;
-        }
-
-        _isAddButtonSelected = false;
-        _isEditButtonSelected = false;
     }
 
     private void InitializeComponents()
     {
+        if (_isInitialized) return;
+        
+        // 查找必要的组件
         if (slotsContainer == null)
         {
             slotsContainer = voxelInventoryPanel.transform.Find("VoxelView/Viewport/SlotsContainer");
             if (slotsContainer == null)
             {
                 Debug.LogError("[VoxelInventoryUI] Slots container is not assigned!");
-                enabled = false;
                 return;
             }
         }
@@ -184,7 +238,6 @@ public class VoxelInventoryUI : MonoBehaviour
         if (slotPrefab == null)
         {
             Debug.LogError("[VoxelInventoryUI] Slot prefab is not assigned!");
-            enabled = false;
             return;
         }
 
@@ -203,12 +256,32 @@ public class VoxelInventoryUI : MonoBehaviour
             if (voxelSystem == null)
             {
                 Debug.LogError("[VoxelInventoryUI] VoxelSystemManager not found!");
-                enabled = false;
                 return;
             }
         }
 
+        // 设置按钮事件
+        SetupButtons();
+        
+        // 订阅事件
+        SubscribeToEvents();
+
         _isInitialized = true;
+    }
+    
+    /// <summary>
+    /// 订阅必要的事件
+    /// </summary>
+    private void SubscribeToEvents()
+    {
+        VoxelRegistry.OnRegistryChanged += HandleRegistryChanged;
+        
+        if (voxelSystem != null)
+        {
+            voxelSystem.onVoxelCreated.AddListener(HandleVoxelCreated);
+            voxelSystem.onVoxelDeleted.AddListener(HandleVoxelDeleted);
+            voxelSystem.onVoxelModified.AddListener(HandleVoxelModified);
+        }
     }
 
     private void HandleRegistryChanged()
@@ -255,7 +328,7 @@ public class VoxelInventoryUI : MonoBehaviour
                 continue;
             }
             
-            Debug.Log($"[VoxelInventoryUI] Creating slot for {def.name} (ID: {def.typeId})");
+            //Debug.Log($"[VoxelInventoryUI] Creating slot for {def.name} (ID: {def.typeId})");
             var slot = Instantiate(slotPrefab, slotsContainer);
             slot.SetVoxel(def);
             
@@ -290,11 +363,8 @@ public class VoxelInventoryUI : MonoBehaviour
         UnselectOtherSlots(slot);
         OnVoxelTypeSelected?.Invoke(slot.VoxelDef);
         
-        // 通知RuntimeVoxelBuilding选中了新的方块类型
-        if (RuntimeVoxelBuilding.Instance != null)
-        {
-            RuntimeVoxelBuilding.Instance.SetSelectedVoxelType((byte)slot.VoxelDef.typeId);
-        }
+        // 通过事件通知选中了新的方块类型
+        // RuntimeVoxelBuilding会监听OnVoxelTypeSelected事件
         
         Debug.Log($"Selected voxel: {slot.VoxelDef.displayName}");
     }
