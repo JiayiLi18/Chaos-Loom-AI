@@ -84,12 +84,9 @@ namespace Voxels
 
             def.typeId = requestedId;
 
-            // Register texture
-            if (def.texture != null)
-            {
-                def.UpdateTextureIfNeeded();
-                //Debug.Log($"Registered voxel '{def.name}' with texture '{def.texture.name}' at index {def.sliceIndex}");
-            }
+            // Register textures (face textures)
+            def.UpdateTextureIfNeeded();
+            //Debug.Log($"Registered voxel '{def.name}' with face textures");
 
             s_Definitions[requestedId] = def;
             s_IdByName[def.name] = requestedId;

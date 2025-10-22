@@ -95,7 +95,13 @@ namespace Voxels
         {
             if (tex != null)
             {
-                texture = tex;
+                // 将纹理设置为所有面的默认纹理
+                for (int i = 0; i < 6; i++)
+                {
+                    if (faceTextures[i] == null)
+                        faceTextures[i] = new FaceTexture();
+                    faceTextures[i].texture = tex;
+                }
                 UpdateTextureIfNeeded();
             }
         }
@@ -107,20 +113,6 @@ namespace Voxels
             {
                 Debug.LogError("[VoxelDefinition] TextureLibrary is not initialized, update texture failed!");
                 return;
-            }
-
-            // 更新默认贴图
-            if (texture != null)
-            {
-                int newIndex = TextureLibrary.SafeRegister(texture);
-                if (newIndex >= 0)
-                {
-                    sliceIndex = newIndex;
-                }
-            }
-            else
-            {
-                sliceIndex = 0;
             }
 
             // 更新每个面的贴图
@@ -139,8 +131,8 @@ namespace Voxels
                 }
                 else
                 {
-                    // 如果面没有指定贴图，使用默认贴图
-                    faceTextures[i].sliceIndex = sliceIndex;
+                    // 如果面没有指定贴图，使用默认索引0
+                    faceTextures[i].sliceIndex = 0;
                 }
 
                 // 更新变化贴图的sliceIndex
@@ -169,6 +161,9 @@ namespace Voxels
                     }
                 }
             }
+            
+            // 设置默认sliceIndex为第一个面的索引（向后兼容）
+            sliceIndex = faceTextures[0] != null ? faceTextures[0].sliceIndex : 0;
         }
 
         /// <summary>
@@ -213,11 +208,11 @@ namespace Voxels
         /// </summary>
         /// <param name="displayName">显示名称</param>
         /// <param name="baseColor">基础颜色</param>
-        /// <param name="texture">贴图</param>
+        /// <param name="faceTextures">6个面的贴图数组</param>
         /// <param name="description">描述</param>
         /// <param name="isTransparent">是否透明</param>
         /// <returns>是否更新成功</returns>
-        public bool UpdateDefinition(string displayName, Color32 baseColor, Texture2D texture, 
+        public bool UpdateDefinition(string displayName, Color32 baseColor, Texture2D[] faceTextures, 
                                     string description = "", bool isTransparent = false)
         {
             try
@@ -228,10 +223,15 @@ namespace Voxels
                 this.description = description;
                 this.isTransparent = isTransparent;
                 
-                // 更新贴图
-                if (texture != null)
+                // 更新面贴图
+                if (faceTextures != null && faceTextures.Length == 6)
                 {
-                    this.texture = texture;
+                    for (int i = 0; i < 6; i++)
+                    {
+                        if (this.faceTextures[i] == null)
+                            this.faceTextures[i] = new FaceTexture();
+                        this.faceTextures[i].texture = faceTextures[i];
+                    }
                 }
                 
                 // 更新纹理索引

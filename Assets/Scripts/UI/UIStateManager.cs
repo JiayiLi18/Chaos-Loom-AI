@@ -9,6 +9,7 @@ public class UIStateManager : MonoBehaviour
     [Header("UI Objects")]
     [SerializeField] private static GameObject[] uiElementsToToggle; // 需要切换显示的UI对象
     public static bool currentGameplayMode = true;
+    [SerializeField] private bool defaultGameplayMode = true;
 
     private void Awake()
     {
@@ -24,7 +25,7 @@ public class UIStateManager : MonoBehaviour
         uiElementsToToggle = GameObject.FindGameObjectsWithTag("ToggleTarget");
 
         // 初始状态设置
-        SetGameplayState(true);
+        SetGameplayState(defaultGameplayMode);
     }
 
     private void OnDestroy()

@@ -8,8 +8,8 @@ using UnityEngine.InputSystem;
 public class RuntimeVoxelBuilding : MonoBehaviour
 {
     [Header("References")]
-    private VoxelInventoryUI voxelInventoryUI;
     private VoxelPreviewManager _previewManager;
+    [SerializeField] private VoxelInventoryUI _voxelInventoryUI;
 
     [Header("Building Settings")]
     [SerializeField] private float maxDistance = 5f;
@@ -73,18 +73,16 @@ public class RuntimeVoxelBuilding : MonoBehaviour
         {
             Debug.LogWarning("找不到VoxelPreviewManager组件，预览功能将不可用");
         }
+
+        if (_voxelInventoryUI == null)
+        {
+            _voxelInventoryUI = FindAnyObjectByType<VoxelInventoryUI>();
+            if (_voxelInventoryUI == null)
+            {
+                Debug.LogError("找不到VoxelInventoryUI组件");
+            }
+        }
         
-        // 获取VoxelInventoryUI并订阅事件
-        voxelInventoryUI = FindAnyObjectByType<VoxelInventoryUI>();
-        if (voxelInventoryUI == null)
-        {
-            Debug.LogWarning("找不到VoxelInventoryUI组件，库存功能将不可用");
-        }
-        else
-        {
-            // 订阅UI事件
-            voxelInventoryUI.OnVoxelTypeSelected += OnVoxelTypeSelected;
-        }
 
         _isInitialized = true;
     }
@@ -102,10 +100,6 @@ public class RuntimeVoxelBuilding : MonoBehaviour
             _previewManager.enabled = true;
         }
 
-        if (voxelInventoryUI != null)
-        {
-            voxelInventoryUI.enabled = true;
-        }
     }
 
     private void OnDisable()
@@ -116,19 +110,10 @@ public class RuntimeVoxelBuilding : MonoBehaviour
             _previewManager.HidePreview();
             _previewManager.enabled = false;
         }
-        if (voxelInventoryUI != null)
-        {
-            voxelInventoryUI.enabled = false;
-        }
     }
 
     private void OnDestroy()
     {
-        // 取消事件订阅
-        if (voxelInventoryUI != null)
-        {
-            voxelInventoryUI.OnVoxelTypeSelected -= OnVoxelTypeSelected;
-        }
         
         if (Instance == this)
         {
@@ -160,11 +145,6 @@ public class RuntimeVoxelBuilding : MonoBehaviour
     /// <param name="enable">true为打开Add按钮（创建模式），false为关闭</param>
     public void SetAddButtonState(bool enable)
     {
-        if (voxelInventoryUI != null)
-        {
-            voxelInventoryUI.SetAddButtonState(enable);
-            voxelInventoryUI.voxelEditingUI.enabled = enable;
-        }
     }
     
     /// <summary>
@@ -183,14 +163,6 @@ public class RuntimeVoxelBuilding : MonoBehaviour
         SetAddButtonState(false);
     }
     
-    /// <summary>
-    /// 获取Add按钮当前状态
-    /// </summary>
-    public bool IsAddButtonSelected()
-    {
-        return voxelInventoryUI != null && voxelInventoryUI.IsAddButtonSelected();
-    }
-
 
     private void Update()
     {
@@ -204,6 +176,12 @@ public class RuntimeVoxelBuilding : MonoBehaviour
                 _previewManager.HidePreview();
             }
             return;
+        }
+        
+        if (_voxelInventoryUI != null && _voxelInventoryUI._selectedSlot != null)
+        {
+            _selectedType = (byte)_voxelInventoryUI._selectedSlot.VoxelDef.typeId;
+            SetSelectedVoxelType(_selectedType);
         }
 
         UpdateHoverVoxel();

@@ -258,20 +258,70 @@ namespace Voxels
                 for (int k = 0; k < 4; ++k) colors.Add(c);
 
                 // UV0 generation (block atlas UVs)
-                if (faceIndex == 0 || faceIndex == 1) // +X或-X面需要旋转90度
+                // ==== 统一的 UV 生成 + 按面修正（只改 UV，不动几何） ====
+                // 基础矩形（mask 空间，x 向右，y 向上）
+                int X0 = x0, Y0 = y0, Ww = w, Hh = h;
+
+                int rotSteps = 0;   // 0,1,2,3 分别表示 0°/90°/180°/270°（逆时针）
+                bool mirrorU = false;
+
+                switch (faceIndex)
                 {
-                    uvs.Add(new Vector2(y0 + h, x0));          // BL 
-                    uvs.Add(new Vector2(y0 + h, x0 + w));      // BR
-                    uvs.Add(new Vector2(y0, x0 + w));          // TR
-                    uvs.Add(new Vector2(y0, x0));              // TL
+                    case 0: // +X
+                        mirrorU = true; rotSteps = 1;
+                        break;
+                    case 1: // -X
+                        rotSteps = 3;
+                        break;
+                    case 2: // +Y
+                        mirrorU = true; rotSteps = 1;   // 镜像 + 90°
+                        break;
+                    case 3: // -Y
+                        mirrorU = false; rotSteps = 1;  // 90°
+                        break;
+                    case 4: // +Z
+                        mirrorU = true; // 镜像 
+                        break;
+                    case 5: // -Z
+                        break;
                 }
-                else
+
+                // 2) 从局部四角(0..Ww, 0..Hh)出发做几何变换，最后偏移到 (X0,Y0)
+                float2 nbl = new float2(0, 0);
+                float2 nbr = new float2(Ww, 0);
+                float2 ntr = new float2(Ww, Hh);
+                float2 ntl = new float2(0, Hh);
+
+                // 水平镜像（U 反转）：u -> (Ww - u)
+                if (mirrorU)
                 {
-                    uvs.Add(new Vector2(x0, y0));        // BL
-                    uvs.Add(new Vector2(x0 + w, y0));        // BR
-                    uvs.Add(new Vector2(x0 + w, y0 + h));    // TR
-                    uvs.Add(new Vector2(x0, y0 + h));    // TL
+                    nbl.x = Ww - nbl.x;  nbr.x = Ww - nbr.x;
+                    ntr.x = Ww - ntr.x;  ntl.x = Ww - ntl.x;
                 }
+
+                // 旋转：每转 90°逆时针：(u,v)->(v, Ww - u)，并交换当前宽高
+                for (int ns = 0; ns < rotSteps; ns++)
+                {
+                    float2 rbl = new float2(nbl.y, Ww - nbl.x);
+                    float2 rbr = new float2(nbr.y, Ww - nbr.x);
+                    float2 rtr = new float2(ntr.y, Ww - ntr.x);
+                    float2 rtl = new float2(ntl.y, Ww - ntl.x);
+                    nbl = rbl; nbr = rbr; ntr = rtr; ntl = rtl;
+                    int t = Ww; Ww = Hh; Hh = t; // 宽高交换
+                }
+
+                // 偏移到 atlas 坐标
+                Vector2 uvBL = new Vector2(X0 + nbl.x, Y0 + nbl.y);
+                Vector2 uvBR = new Vector2(X0 + nbr.x, Y0 + nbr.y);
+                Vector2 uvTR = new Vector2(X0 + ntr.x, Y0 + ntr.y);
+                Vector2 uvTL = new Vector2(X0 + ntl.x, Y0 + ntl.y);
+
+                // 写入（顺序必须与顶点写入一致：bl, br, tr, tl）
+                uvs.Add(uvBL);
+                uvs.Add(uvBR);
+                uvs.Add(uvTR);
+                uvs.Add(uvTL);
+
 
                 // UV1.x = slice index (same per‑quad)
                 float slice = 0f;

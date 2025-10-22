@@ -36,47 +36,6 @@ public class VoxelSystemManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 创建新的体素类型
-    /// </summary>
-    public void CreateVoxelType(string name, string description, Texture2D texture)
-    {
-        if (!_isInitialized || string.IsNullOrEmpty(name) || texture == null)
-        {
-            Debug.LogError("[VoxelSystemManager] Cannot create voxel type: Invalid parameters or not initialized");
-            return;
-        }
-
-        // 生成唯一的文件名：原名字_时间戳
-        string timestamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        string uniqueTexName = $"{name}_{timestamp}";
-        texture.name = uniqueTexName;
-
-        // 确保目录存在
-        if (!Directory.Exists(texSavePath))
-        {
-            Directory.CreateDirectory(texSavePath);
-        }
-
-        // 保存贴图
-        byte[] pngData = texture.EncodeToPNG();
-        string texPath = Path.Combine(texSavePath, uniqueTexName + ".png");
-        File.WriteAllBytes(texPath, pngData);
-        
-#if UNITY_EDITOR
-        UnityEditor.AssetDatabase.Refresh();
-#endif
-
-        // 注册新的体素
-        ushort newId = voxelJsonDB.AddVoxel(name, Color.white, texture, description, false);
-        if (newId > 0)
-        {
-            var newDef = VoxelRegistry.GetDefinition(newId);
-            onVoxelCreated?.Invoke(newDef);
-            Debug.Log($"[VoxelSystemManager] Created voxel type '{name}' with ID {newId}");
-        }
-    }
-
-    /// <summary>
     /// 创建新的体素类型（支持6个面不同纹理）
     /// </summary>
     public void CreateVoxelTypeWithFaces(string name, string description, Texture2D[] faceTextures)
@@ -95,61 +54,6 @@ public class VoxelSystemManager : MonoBehaviour
             onVoxelCreated?.Invoke(newDef);
             Debug.Log($"[VoxelSystemManager] Created voxel type '{name}' with faces, ID {newId}");
         }
-    }
-
-    /// <summary>
-    /// 修改现有的体素类型
-    /// </summary>
-    public void ModifyVoxelType(ushort typeId, string name = null, string description = null, Texture2D newTexture = null)
-    {
-        if (!_isInitialized)
-        {
-            Debug.LogError("[VoxelSystemManager] Not initialized!");
-            return;
-        }
-
-        var def = VoxelRegistry.GetDefinition(typeId);
-        if (def == null)
-        {
-            Debug.LogError($"[VoxelSystemManager] VoxelDefinition with ID {typeId} not found!");
-            return;
-        }
-
-        // 更新名称和描述
-        if (!string.IsNullOrEmpty(name))
-        {
-            def.name = name;
-            def.displayName = name;
-        }
-
-        if (!string.IsNullOrEmpty(description))
-        {
-            def.description = description;
-        }
-
-        // 更新贴图
-        if (newTexture != null)
-        {
-            string timestamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            string uniqueTexName = $"{def.name}_{timestamp}";
-            newTexture.name = uniqueTexName;
-
-            if (!Directory.Exists(texSavePath))
-            {
-                Directory.CreateDirectory(texSavePath);
-            }
-
-            byte[] pngData = newTexture.EncodeToPNG();
-            string texPath = Path.Combine(texSavePath, uniqueTexName + ".png");
-            File.WriteAllBytes(texPath, pngData);
-
-            def.texture = newTexture;
-            def.UpdateTextureIfNeeded();
-        }
-
-        voxelJsonDB.SaveDatabase();
-        onVoxelModified?.Invoke(def);
-        Debug.Log($"[VoxelSystemManager] Modified voxel type {typeId}");
     }
 
     /// <summary>
@@ -205,12 +109,8 @@ public class VoxelSystemManager : MonoBehaviour
                 }
             }
             
-            // 更新默认纹理（使用第一个面）
-            if (faceTextures[0] != null)
-            {
-                def.texture = faceTextures[0];
-                def.sliceIndex = TextureLibrary.SafeRegister(faceTextures[0]);
-            }
+            // 更新纹理索引
+            def.UpdateTextureIfNeeded();
         }
 
         voxelJsonDB.SaveDatabase();

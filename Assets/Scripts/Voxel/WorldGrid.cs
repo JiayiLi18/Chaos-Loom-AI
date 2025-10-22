@@ -68,7 +68,6 @@ namespace Voxels
                         sc.InitVoxels();
                         _subChunks[x, y, z] = sc;
                     }
-                    
         }
 
         /// <summary>World voxel coordinate → Set</summary>

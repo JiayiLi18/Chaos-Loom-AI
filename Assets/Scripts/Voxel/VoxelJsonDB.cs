@@ -172,17 +172,20 @@ namespace Voxels
                         }
                     }
                     
-                    // 设置默认贴图
-                    if (!string.IsNullOrEmpty(v.texture))
+                    // 如果没有面贴图但有默认贴图，将默认贴图应用到所有面
+                    if (firstFaceTex == null && !string.IsNullOrEmpty(v.texture))
                     {
-                        def.texture = LoadTextureFile(v.texture);
-                        //Debug.Log($"[VoxelJsonDB] Loading texture for {v.name}: {v.texture}");
-                    }
-                    // 如果没有默认贴图但有面贴图，使用第一个面贴图作为默认贴图
-                    else if (firstFaceTex != null)
-                    {
-                        def.texture = firstFaceTex;
-                        //Debug.Log($"[VoxelJsonDB] Using first face texture as default texture for {v.name}");
+                        Texture2D defaultTex = LoadTextureFile(v.texture);
+                        if (defaultTex != null)
+                        {
+                            for (int i = 0; i < 6; i++)
+                            {
+                                if (def.faceTextures[i] == null)
+                                    def.faceTextures[i] = new VoxelDefinition.FaceTexture();
+                                def.faceTextures[i].texture = defaultTex;
+                            }
+                            //Debug.Log($"[VoxelJsonDB] Applied default texture to all faces for {v.name}: {v.texture}");
+                        }
                     }
                     
                     // 更新所有贴图索引
@@ -238,83 +241,6 @@ namespace Voxels
             LoadDatabase();
         }
 
-        /// <summary>
-        /// 添加新的体素到数据库
-        /// </summary>
-        public ushort AddVoxel(string name, Color32 baseColor, Texture2D tex, string description = "", bool isTransparent = false)
-        {
-            if (_cache == null || !_isInitialized)
-            {
-                Debug.LogError("[VoxelJsonDB] Database not initialized!");
-                return 0;
-            }
-            
-            // 检查名称是否为空
-            if (string.IsNullOrEmpty(name))
-            {
-                Debug.LogError("[VoxelJsonDB] Cannot add voxel with empty name!");
-                return 0;
-            }
-
-            try
-            {
-                // 生成唯一的名字
-                string uniqueName = GenerateUniqueName(name);
-                if (uniqueName != name)
-                {
-                    Debug.Log($"[VoxelJsonDB] Name '{name}' already exists, using '{uniqueName}' instead");
-                }
-                
-                // 创建新的体素条目
-                var entry = new VoxelEntry
-                {
-                    name = uniqueName,
-                    texture = tex != null ? tex.name + ".png" : "",
-                    face_textures = new string[6],
-                    base_color = new int[] { baseColor.r, baseColor.g, baseColor.b },
-                    description = description,
-                    is_transparent = isTransparent
-                };
-                
-                // 生成ScriptableObject并注册
-                var def = ScriptableObject.CreateInstance<VoxelDefinition>();
-                def.name = uniqueName;
-                def.displayName = uniqueName;
-                def.baseColor = baseColor;
-                def.description = description;
-                def.isTransparent = isTransparent;
-                def.texture = tex;
-                def.UpdateTextureIfNeeded();
-                
-                // 让 VoxelRegistry 自动分配 typeId
-                ushort typeId = VoxelRegistry.Register(def);
-                
-                // 检查注册是否成功
-                if (typeId == 0)
-                {
-                    Debug.LogError($"[VoxelJsonDB] Failed to register voxel '{uniqueName}'");
-                    UnityEngine.Object.Destroy(def); // 清理未使用的对象
-                    return 0;
-                }
-                
-                // 更新数据库中的 ID
-                entry.id = typeId;
-                
-                // 添加到数据库
-                _cache.voxels.Add(entry);
-                
-                // 更新revision和保存
-                _cache.revision = DateTime.UtcNow.ToString("o");
-                SaveDatabase();
-
-                return typeId;
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"[VoxelJsonDB] Failed to add voxel {name}: {ex.Message}");
-                return 0;
-            }
-        }
 
         /// <summary>
         /// 添加新的体素到数据库（支持6个面不同纹理）
@@ -373,7 +299,7 @@ namespace Voxels
                 def.baseColor = baseColor;
                 def.description = description;
                 def.isTransparent = isTransparent;
-                def.texture = faceTextures[0]; // 使用第一个面作为默认纹理
+                // 不需要设置默认纹理，faceTextures已经包含了所有面的纹理
                 
                 // 设置面纹理
                 def.faceTextures = new VoxelDefinition.FaceTexture[6];
