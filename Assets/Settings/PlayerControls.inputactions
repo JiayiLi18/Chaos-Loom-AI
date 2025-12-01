@@ -24,7 +24,7 @@
                     "initialStateCheck": true
                 },
                 {
-                    "name": "SwitchTool",
+                    "name": "Switch",
                     "type": "Value",
                     "id": "d2d77982-3a3f-432a-b011-bf078ca891ed",
                     "expectedControlType": "Axis",
@@ -60,15 +60,6 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "ColorEdit",
-                    "type": "Button",
-                    "id": "c2ba7a7b-afed-404e-a03e-74197ce77df8",
-                    "expectedControlType": "Button",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
                     "name": "VerticalMove",
                     "type": "Value",
                     "id": "4241025f-7176-46f1-be5b-ae4fd23f7b7a",
@@ -76,6 +67,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": true
+                },
+                {
+                    "name": "Submit",
+                    "type": "Button",
+                    "id": "85da591d-db4b-4b64-b3e2-8349258feef8",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -152,7 +152,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "SwitchTool",
+                    "action": "Switch",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -163,7 +163,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "SwitchTool",
+                    "action": "Switch",
                     "isComposite": true,
                     "isPartOfComposite": false
                 },
@@ -174,7 +174,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "SwitchTool",
+                    "action": "Switch",
                     "isComposite": false,
                     "isPartOfComposite": true
                 },
@@ -185,7 +185,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "SwitchTool",
+                    "action": "Switch",
                     "isComposite": false,
                     "isPartOfComposite": true
                 },
@@ -223,17 +223,6 @@
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
-                    "id": "2e7b905e-69c9-4b4d-b2de-3fa6313e6d8c",
-                    "path": "<Keyboard>/c",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "ColorEdit",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
                     "name": "1D Axis",
                     "id": "d3e4a5f7-8f42-4807-b3e7-e177c893d6d9",
                     "path": "1DAxis",
@@ -265,6 +254,17 @@
                     "action": "VerticalMove",
                     "isComposite": false,
                     "isPartOfComposite": true
+                },
+                {
+                    "name": "",
+                    "id": "8d2ad4a0-a4f8-4ef6-9066-d3472f900876",
+                    "path": "<Keyboard>/enter",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Submit",
+                    "isComposite": false,
+                    "isPartOfComposite": false
                 }
             ]
         }

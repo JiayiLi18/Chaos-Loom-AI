@@ -9,15 +9,18 @@ public class PhotoTakingUI : MonoBehaviour
 {
     [Header("UI References")]
     [SerializeField] public Button takePhotoButton;
+    [SerializeField] public Button closeButton;
     [SerializeField] public RawImage previewImage;
     [SerializeField] private TMP_Text statusText;
-    [SerializeField] private GameObject photoUI;
+    public GameObject photoTakingUIPanel;
     
     private bool _isInitialized = false;
-
+    
+    // 关闭UI请求事件
+    public System.Action OnCloseRequested;
+    
     private void InitializeComponents()
     {
-
         if (takePhotoButton != null)
         {
             takePhotoButton.onClick.AddListener(HandleTakePhoto);
@@ -26,8 +29,22 @@ public class PhotoTakingUI : MonoBehaviour
         {
             Debug.LogWarning("未设置拍照按钮引用");
         }
+        
+        if (closeButton != null)
+        {
+            closeButton.onClick.AddListener(HandleClose);
+        }
+        else
+        {
+            Debug.LogWarning("未设置关闭按钮引用");
+        }
 
         _isInitialized = true;
+    }
+    
+    private void HandleClose()
+    {
+        OnCloseRequested?.Invoke();
     }
 
     private void OnEnable()
@@ -36,17 +53,19 @@ public class PhotoTakingUI : MonoBehaviour
         {
             InitializeComponents();
         }
-        if (photoUI != null)
+        // 当被启用时，激活子UI对象
+        if (photoTakingUIPanel != null)
         {
-            photoUI.SetActive(true);
+            photoTakingUIPanel.SetActive(true);
         }
     }
 
     private void OnDisable()
     {
-        if (photoUI != null)
+        // 当被禁用时，关闭子UI对象
+        if (photoTakingUIPanel != null)
         {
-            photoUI.SetActive(false);
+            photoTakingUIPanel.SetActive(false);
         }
     }
 
@@ -75,5 +94,13 @@ public class PhotoTakingUI : MonoBehaviour
         {
             takePhotoButton.onClick.RemoveListener(HandleTakePhoto);
         }
+        
+        if (closeButton != null)
+        {
+            closeButton.onClick.RemoveListener(HandleClose);
+        }
+        
+        // 清理事件
+        OnCloseRequested = null;
     }
 } 

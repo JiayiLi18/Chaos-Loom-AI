@@ -10,6 +10,8 @@ public class VoxelInventoryUI : MonoBehaviour
     [SerializeField] private GameObject voxelInventoryPanel;
     private Transform slotsContainer;
     [SerializeField] private VoxelInventorySlot slotPrefab;
+    [SerializeField] private GameObject addButtonPrefab; // Add button prefab（类似PhotoInventoryUI的openCamButtonPrefab）
+    [SerializeField] private bool useAddButton = false; // 是否使用add button（每个实例可单独配置）
 
     [Header("Dependencies")]
     [SerializeField] private VoxelSystemManager voxelSystem;
@@ -17,6 +19,8 @@ public class VoxelInventoryUI : MonoBehaviour
     private List<VoxelInventorySlot> _slots = new List<VoxelInventorySlot>();
     public VoxelInventorySlot _selectedSlot;
     private bool _isInitialized = false;
+    private ushort? _pendingSelectVoxelId = null; // 待选择的voxel ID（在重建inventory后选择）
+    private GameObject _addButton; // 保存add button引用，避免被销毁
 
     // 事件系统
     public event System.Action<VoxelDefinition> OnVoxelTypeSelected;
@@ -69,6 +73,9 @@ public class VoxelInventoryUI : MonoBehaviour
             voxelSystem.onVoxelDeleted.RemoveListener(HandleVoxelDeleted);
             voxelSystem.onVoxelModified.RemoveListener(HandleVoxelModified);
         }
+        
+        // 清理add button引用
+        CleanupAddButton();
     }
 
     private void InitializeComponents()
@@ -106,6 +113,8 @@ public class VoxelInventoryUI : MonoBehaviour
         SubscribeToEvents();
 
         _isInitialized = true;
+
+        Debug.Log("[VoxelInventoryUI] Initialized successfully");
     }
     
     /// <summary>
@@ -130,6 +139,11 @@ public class VoxelInventoryUI : MonoBehaviour
 
     private void HandleVoxelCreated(VoxelDefinition def)
     {
+        // 记录要选择的voxel ID
+        if (def != null && def.typeId > 0)
+        {
+            _pendingSelectVoxelId = def.typeId;
+        }
         RebuildInventory();
     }
 
@@ -140,12 +154,17 @@ public class VoxelInventoryUI : MonoBehaviour
 
     private void HandleVoxelModified(VoxelDefinition def)
     {
+        // 记录要选择的voxel ID
+        if (def != null && def.typeId > 0)
+        {
+            _pendingSelectVoxelId = def.typeId;
+        }
         RebuildInventory();
     }
 
     private void RebuildInventory()
     {
-        // 清理现有slots
+        // 清理现有slots（跳过add button）
         foreach (var slot in _slots)
         {
             if (slot != null)
@@ -155,6 +174,18 @@ public class VoxelInventoryUI : MonoBehaviour
         }
         _slots.Clear();
         _selectedSlot = null;
+
+        // 根据配置决定是否显示add button
+        if (useAddButton)
+        {
+            // 确保add button在第一个位置（类似PhotoInventoryUI的处理方式）
+            EnsureAddButton();
+        }
+        else
+        {
+            // 如果不需要add button，清理已存在的
+            CleanupAddButton();
+        }
 
         // 获取所有VoxelDefinition
         var definitions = VoxelRegistry.GetAllDefinitions();
@@ -183,13 +214,91 @@ public class VoxelInventoryUI : MonoBehaviour
             _slots.Add(slot);
         }
 
-        // 如果有一个及以上槽位，默认选择第一个
-        if (_slots.Count > 0)
+        // 如果有待选择的voxel ID，选择它；否则默认选择第一个
+        if (_pendingSelectVoxelId.HasValue)
         {
+            bool selected = SelectVoxelById(_pendingSelectVoxelId.Value);
+            _pendingSelectVoxelId = null; // 清除待选择标记
+            if (!selected && _slots.Count > 0)
+            {
+                // 如果没找到对应的slot，默认选择第一个
+                OnSlotClicked(_slots[0]);
+            }
+        }
+        else if (_slots.Count > 0)
+        {
+            // 如果没有待选择的voxel，默认选择第一个
             OnSlotClicked(_slots[0]);
         }
     }
-
+    
+    /// <summary>
+    /// 确保add button在第一个位置（类似PhotoInventoryUI的openCamButtonPrefab处理）
+    /// </summary>
+    private void EnsureAddButton()
+    {
+        if (addButtonPrefab == null || slotsContainer == null) return;
+        
+        // 如果add button不存在，创建它
+        if (_addButton == null)
+        {
+            _addButton = Instantiate(addButtonPrefab, slotsContainer);
+            _addButton.name = "AddVoxelButton"; // 给一个标识名称
+            
+            // 设置按钮点击事件
+            Button btn = _addButton.GetComponentInChildren<Button>();
+            if (btn != null)
+            {
+                btn.onClick.RemoveAllListeners();
+                btn.onClick.AddListener(OnAddButtonClicked);
+            }
+        }
+        
+        // 确保add button在第一个位置（设置sibling index为0）
+        _addButton.transform.SetSiblingIndex(0);
+    }
+    
+    /// <summary>
+    /// 清理add button（当不需要时）
+    /// </summary>
+    private void CleanupAddButton()
+    {
+        if (_addButton != null)
+        {
+            Destroy(_addButton);
+            _addButton = null;
+        }
+    }
+    
+    /// <summary>
+    /// 获取add button的引用（供VoxelEditingUI调用）
+    /// </summary>
+    public Button GetAddButton()
+    {
+        if (useAddButton && _addButton != null)
+        {
+            return _addButton.GetComponentInChildren<Button>();
+        }
+        return null;
+    }
+    
+    /// <summary>
+    /// Add button点击事件处理
+    /// </summary>
+    private void OnAddButtonClicked()
+    {
+        // 查找VoxelEditingUI并调用ToggleAddButton
+        var editingUI = FindAnyObjectByType<Voxels.VoxelEditingUI>();
+        if (editingUI != null)
+        {
+            editingUI.ToggleAddButton();
+        }
+        else
+        {
+            Debug.LogWarning("[VoxelInventoryUI] VoxelEditingUI not found!");
+        }
+    }
+    
     private void OnSlotClicked(VoxelInventorySlot slot)
     {
         if (_selectedSlot != null)
@@ -212,5 +321,31 @@ public class VoxelInventoryUI : MonoBehaviour
                 s.SetSelected(false);
             }
         }
+    }
+    
+    /// <summary>
+    /// 根据voxel ID选择对应的slot（公共方法，供外部调用）
+    /// </summary>
+    /// <param name="voxelId">要选择的voxel ID</param>
+    /// <returns>是否成功找到并选择了对应的slot</returns>
+    public bool SelectVoxelById(ushort voxelId)
+    {
+        if (voxelId == 0)
+        {
+            return false;
+        }
+        
+        // 查找对应的slot
+        foreach (var slot in _slots)
+        {
+            if (slot != null && slot.slotId == voxelId)
+            {
+                OnSlotClicked(slot);
+                return true;
+            }
+        }
+        
+        Debug.LogWarning($"[VoxelInventoryUI] Cannot find slot for voxel ID {voxelId}");
+        return false;
     }
 }

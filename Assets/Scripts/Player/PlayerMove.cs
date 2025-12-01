@@ -3,6 +3,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections.Generic;
 
 public class PlayerMove : MonoBehaviour
 {
@@ -46,14 +47,20 @@ public class PlayerMove : MonoBehaviour
 
     private float lastJumpTime; // 上次跳跃时间
     private bool isWaitingForSecondJump; // 是否在等待第二次跳跃
+    
+    // 缓存PhotoTakingUI引用，用于检查鼠标是否在相机UI上
+    private PhotoTakingUI _photoTakingUI;
 
     void Awake()
     {
         playerInput = GetComponent<PlayerInput>();
         if (playerInput == null)
         {
-            Debug.LogError("PlayerInput component not found! Please add a PlayerInput component to the player object.");
-            return;
+            playerInput = FindAnyObjectByType<PlayerInput>();
+            if (playerInput == null)
+            {
+                Debug.LogError("PlayerInput component not found! Please add a PlayerInput component to the player object.");
+            }
         }
 
         // 获取输入动作引用
@@ -116,6 +123,9 @@ public class PlayerMove : MonoBehaviour
         // 设置默认的地面检测层
         if (groundLayer == 0)
             groundLayer = LayerMask.GetMask("Voxel");
+            
+        // 查找PhotoTakingUI引用
+        _photoTakingUI = FindAnyObjectByType<PhotoTakingUI>();
     }
 
     private bool IsInteractingWithUI()
@@ -130,6 +140,36 @@ public class PlayerMove : MonoBehaviour
         // 检查是否是输入框或其他需要键盘输入的UI元素
         return selectedObject.GetComponent<TMP_InputField>() != null || 
                selectedObject.GetComponent<InputField>() != null;
+    }
+    
+    /// <summary>
+    /// 检查鼠标是否在相机UI上，如果是则允许鼠标视角继续工作
+    /// </summary>
+    private bool IsPointerOverPhotoTakingUI()
+    {
+        if (EventSystem.current == null) return false;
+        if (_photoTakingUI == null || _photoTakingUI.photoTakingUIPanel == null) return false;
+        
+        // 检查鼠标下的UI对象是否是PhotoTakingUI或其子对象
+        var pointerEventData = new PointerEventData(EventSystem.current)
+        {
+            position = Input.mousePosition
+        };
+        
+        var results = new List<RaycastResult>();
+        EventSystem.current.RaycastAll(pointerEventData, results);
+        
+        foreach (var result in results)
+        {
+            // 检查是否是PhotoTakingUI的面板或其子对象
+            if (result.gameObject.transform.IsChildOf(_photoTakingUI.photoTakingUIPanel.transform) ||
+                result.gameObject == _photoTakingUI.photoTakingUIPanel)
+            {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     void Update()
@@ -206,7 +246,8 @@ public class PlayerMove : MonoBehaviour
         Move();
 
         // 处理鼠标视角
-        if (!EventSystem.current.IsPointerOverGameObject())
+        // 如果鼠标不在UI上，或者在相机UI上，则允许鼠标视角
+        if (!EventSystem.current.IsPointerOverGameObject() || IsPointerOverPhotoTakingUI())
         {
             HandleMouseLook();
         }

@@ -41,6 +41,27 @@ namespace Voxels
         // 每面当前颜色/贴图缓存（便于 UI 同步）
         private readonly Color[] _colors = new Color[6];
         private readonly Texture[] _textures = new Texture[6];
+        
+        /// <summary>
+        /// 验证枚举值是否有效（防止Unity序列化无效的枚举值导致错误）
+        /// </summary>
+        private bool IsValidCubeFace(CubeFace face)
+        {
+            int faceValue = (int)face;
+            return faceValue >= 0 && faceValue <= 5;
+        }
+        
+        /// <summary>
+        /// 确保current字段始终是有效的枚举值（Unity编辑器验证）
+        /// </summary>
+        private void OnValidate()
+        {
+            if (!IsValidCubeFace(current))
+            {
+                Debug.LogWarning($"[Cube3DUI] Invalid enum value detected: {(int)current}, resetting to Front");
+                current = CubeFace.Front;
+            }
+        }
 
         // 名称->面 的快速映射（如果 6 个 Quad 名字固定，如 "Face_Up" 等）
         public string nameUp = "Face_Up";
@@ -77,7 +98,6 @@ namespace Voxels
                 Debug.LogError("[Cube3DUI] Components not initialized!");
                 return;
             }
-            InitializeVoxelEditingConnection();
         }
 
         private void InitializeComponents()
@@ -104,11 +124,11 @@ namespace Voxels
             // 检查必要组件
             CheckRequiredComponents();
             
-            // 确保有一个默认选中的面
-            if (current == (CubeFace)(-1))
+            // 确保current字段始终是有效的枚举值（防止序列化错误）
+            if (!IsValidCubeFace(current))
             {
-                current = CubeFace.Front; // 默认选中Front面
-               // Debug.Log("[Cube3DUI] No face selected, defaulting to Front face");
+                Debug.LogWarning($"[Cube3DUI] Invalid enum value detected during initialization: {(int)current}, resetting to Front");
+                current = CubeFace.Front;
             }
             
             _isInitialized = true;
@@ -174,12 +194,6 @@ namespace Voxels
             }
             
             
-        }
-
-        private void InitializeVoxelEditingConnection()
-        {
-            // 不再需要连接VoxelEditingUI，改为通过事件通知
-            Debug.Log("[Cube3DUI] Initialized - ready to receive face selection events");
         }
 
 
@@ -343,7 +357,7 @@ namespace Voxels
             
             
             CubeFace hitFace = GetFaceFromName(go.name);
-            if (hitFace == (CubeFace)(-1))
+            if (!IsValidCubeFace(hitFace))
             {
                 return;
             }
@@ -366,6 +380,7 @@ namespace Voxels
         /// <summary>
         /// 从物体名称获取面
         /// 使用顺序: Right(0), Left(1), Up(2), Down(3), Front(4), Back(5)
+        /// 返回无效值时使用 -1 的整数值（会通过IsValidCubeFace验证为无效）
         /// </summary>
         private CubeFace GetFaceFromName(string faceName)
         {
@@ -377,13 +392,19 @@ namespace Voxels
             if (faceName == nameBack) return CubeFace.Back;
             
             Debug.LogWarning($"[Cube3DUI] Unknown face name: {faceName}");
-            return (CubeFace)(-1);
+            return (CubeFace)(-1); // 使用 -1 作为无效值标识
         }
 
         // ========== 改色 ==========
 
         public void SetFaceColor(CubeFace face, Color c)
         {
+            if (!IsValidCubeFace(face))
+            {
+                Debug.LogWarning($"[Cube3DUI] Invalid face enum value: {(int)face}");
+                return;
+            }
+            
             int i = (int)face;
             _colors[i] = c;
 
@@ -393,7 +414,7 @@ namespace Voxels
                 // 只清除当前面的贴图，保留其他面的贴图
                 SetFaceTexture(face, null);
                 _faceTextureMode[i] = false; // 标记为颜色模式
-                Debug.Log($"[Cube3DUI] Cleared texture for face {face}, switched to color mode");
+                //Debug.Log($"[Cube3DUI] Cleared texture for face {face}, switched to color mode");
             }
 
             var mr = faceRenderers[i];
@@ -407,6 +428,12 @@ namespace Voxels
         // ========== 换贴图（可从按钮传入） ==========
         public void SetFaceTexture(CubeFace face, Texture2D tex)
         {
+            if (!IsValidCubeFace(face))
+            {
+                Debug.LogWarning($"[Cube3DUI] Invalid face enum value: {(int)face}");
+                return;
+            }
+            
             int i = (int)face;
             _textures[i] = tex;
 
@@ -663,7 +690,7 @@ namespace Voxels
                 var go = hit.collider.gameObject;
                 CubeFace hitFace = GetFaceFromName(go.name);
                 
-                if (hitFace != (CubeFace)(-1))
+                if (IsValidCubeFace(hitFace))
                 {
                     _hoveredFace = hitFace;
                 }
@@ -679,8 +706,8 @@ namespace Voxels
             {
                 case CubeFace.Right: return "Right";
                 case CubeFace.Left: return "Left";
-                case CubeFace.Up: return "Up";
-                case CubeFace.Down: return "Down";
+                case CubeFace.Up: return "Top";
+                case CubeFace.Down: return "Bottom";
                 case CubeFace.Front: return "Front";
                 case CubeFace.Back: return "Back";
                 default: return "Unknown";

@@ -1,5 +1,18 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-3071516526880139816
+MonoBehaviour:
+  m_ObjectHideFlags: 11
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  version: 9
 --- !u!21 &2100000
 Material:
   serializedVersion: 8
@@ -8,55 +21,42 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Shell
-  m_Shader: {fileID: 4800000, guid: 4fa138c3e6133db44ba0289890c3e483, type: 3}
-  m_Parent: {fileID: 0}
-  m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
+  m_Shader: {fileID: 4800000, guid: 933532a4fcc9baf4fa0491de14d08ed7, type: 3}
+  m_Parent: {fileID: 2100000, guid: 53f09e1adb0889d4f9c26578b84dd289, type: 2}
+  m_ModifiedSerializedProperties: 16
+  m_ValidKeywords:
+  - _RECEIVE_SHADOWS_OFF
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
-  stringTagMap: {}
-  disabledShaderPasses: []
+  stringTagMap:
+    RenderType: Opaque
+  disabledShaderPasses:
+  - MOTIONVECTORS
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
+    - _BaseMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _MainTex:
         m_Texture: {fileID: 0}
-        m_Scale: {x: 10, y: 10}
-        m_Offset: {x: 0, y: 0}
-    - _MaskTexture:
-        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _MuskTex:
-        m_Texture: {fileID: 10300, guid: 0000000000000000f000000000000000, type: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _NormalMap:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 0.5, y: 0.5}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _GradientOffset: 0.55
-    - _GradientScale: 0.747
-    - _HighlightSmoothness: 0
-    - _HighlightThreshold: 0.95
-    - _HightlightSmoothness: 0
-    - _HightlightThreshold: 0.37
-    - _NormalMapScale: 1
+    - _AlphaClip: 0
+    - _AlphaToMask: 0
+    - _Cutoff: 0.5
+    - _EnvironmentReflections: 1
+    - _QueueOffset: 0
     - _ReceiveShadows: 0
-    - _ShadowBiasScale: 0.01
-    - _ShadowSmoothness: 0.024
-    - _ShadowThreshold: -0
     - _Smoothness: 0.5
-    m_Colors:
-    - _ColorA: {r: 1, g: 0.8598813, b: 0, a: 1}
-    - _ColorB: {r: 0.97304577, g: 0.9713362, b: 0.9481294, a: 1}
-    - _ShadowColor: {r: 1, g: 1, b: 1, a: 1}
-    - _ShadowColor2: {r: 0.89757407, g: 0.84526056, b: 0.6520113, a: 1}
+    - _SpecularHighlights: 1
+    m_Colors: []
   m_BuildTextureStacks: []
   m_AllowLocking: 1

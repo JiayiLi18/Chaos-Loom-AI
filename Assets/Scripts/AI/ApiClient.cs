@@ -3,6 +3,7 @@ using UnityEngine.Networking;
 using System.Collections;
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 /// <summary>
 /// 专注于API通信的客户端，支持Events和Permission API
@@ -15,6 +16,12 @@ public class ApiClient : MonoBehaviour
 
     // 定义委托用于回调
     public delegate void ApiResponseCallback(string response, string error);
+
+    private void Awake()
+    {
+        // 防止在场景切换或游戏退出时被销毁
+        DontDestroyOnLoad(gameObject);
+    }
 
     #region Public API Methods
     /// <summary>
@@ -29,6 +36,16 @@ public class ApiClient : MonoBehaviour
             callback?.Invoke(null, "EventBatch is null!");
             return;
         }
+        
+        // 检查对象是否已被销毁
+        if (this == null || !this || !gameObject)
+        {
+            callback?.Invoke(null, "ApiClient object has been destroyed!");
+            return;
+        }
+        
+        // 在发送前，将所有 ImageData 中的文件转换为 base64
+        ConvertImageDataToBase64(eventBatch);
         
         // 使用 EventBatch.ToJson() 确保 payload 不丢失，直接发送
         var json = eventBatch.ToJson();
@@ -49,135 +66,139 @@ public class ApiClient : MonoBehaviour
         }
         StartCoroutine(PostPermissionRequest(permissionRequest, callback));
     }
-    #endregion
-
-    #region Test Helpers
-    /// <summary>
-    /// 测试：使用真实的 GameStateManager 数据构造 EventBatch 并发送到 Events API
-    /// 在 Unity Inspector 中右键组件，选择 "Test Send Real Game State" 触发
-    /// </summary>
-    [ContextMenu("Test Send Real Game State")]
-    public void TestSendRealGameState()
-    {
-        try
-        {
-            // 查找 GameStateManager
-            var gameStateManager = FindFirstObjectByType<GameStateManager>();
-            if (gameStateManager == null)
-            {
-                Debug.LogError("[ApiClient] Could not find GameStateManager component!");
-                return;
-            }
-
-            // 触发一次自动监控更新，获取最新的游戏状态
-            gameStateManager.TriggerManualUpdate();
-
-            // 创建测试事件
-            var testSessionId = $"session_{DateTime.Now:yyyyMMdd_HHmmss}";
-            var ts = TimestampUtils.GenerateTimestamp();
-            
-            var testEvent = new EventData(
-                ts,
-                "player_speak",
-                new PlayerSpeakPayload("Hello from TestSendRealGameState", null)
-            );
-
-            // 创建 EventBatch 并使用真实的游戏状态
-            var eventBatch = new EventBatch(testSessionId);
-            eventBatch.AddEvent(testEvent);
-            
-            // 获取当前游戏状态并设置到批次中
-            var currentGameState = gameStateManager.GetCurrentGameState();
-            eventBatch.SetGameState(currentGameState);
-
-            Debug.Log($"[ApiClient] Sending real game state batch session= {testSessionId}");
-            Debug.Log($"[ApiClient] Game State: Agent={currentGameState.agent_position.x},{currentGameState.agent_position.y},{currentGameState.agent_position.z}");
-            Debug.Log($"[ApiClient] Six Direction: Up={currentGameState.six_direction.up.name} (id:{currentGameState.six_direction.up.id}, dist:{currentGameState.six_direction.up.distance})");
-
-            // 使用 EventBatch.ToJson() 发送
-            SendEventsRequest(eventBatch, (response, error) =>
-            {
-                if (!string.IsNullOrEmpty(error))
-                {
-                    Debug.LogError($"[ApiClient] Real game state batch send failed: {error}");
-                }
-                else
-                {
-                    Debug.Log($"[ApiClient] Real game state batch sent successfully: {response}");
-                }
-            });
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"[ApiClient] Exception in TestSendRealGameState: {e.Message}");
-        }
-    }
 
     /// <summary>
-    /// 旧版测试：构造一个硬编码的测试 EventBatch（保留作为备用）
+    /// 发送 Plan Permission Request 到 Permission API（使用 raw JSON）
     /// </summary>
-    [ContextMenu("Test Send Dummy Batch (Legacy)")]
-    public void TestSendDummyBatchLegacy()
+    /// <param name="jsonData">序列化后的 JSON 字符串</param>
+    /// <param name="callback">回调函数</param>
+    public void SendPlanPermissionRequest(string jsonData, ApiResponseCallback callback)
     {
-        try
+        if (string.IsNullOrEmpty(jsonData))
         {
-            // 创建测试批次
-            var testSessionId = $"session_{DateTime.Now:yyyyMMdd_HHmmss}";
-            var ts = TimestampUtils.GenerateTimestamp();
-
-            // 直接构造最小合法 JSON（确保 payload 保留）
-            var json = "{" +
-                $"\"session_id\":\"{testSessionId}\"," +
-                "\"events\":[{" +
-                    $"\"timestamp\":\"{ts}\"," +
-                    "\"type\":\"player_speak\"," +
-                    "\"payload\":{\"text\":\"Hello from TestSendDummyBatchLegacy\",\"image\":null}" +
-                "}]," +
-                "\"game_state\":{" +
-                    $"\"timestamp\":\"{ts}\"," +
-                    "\"agent_position\":{\"x\":0,\"y\":0,\"z\":0}," +
-                    "\"player_position_rel\":{\"x\":0,\"y\":0,\"z\":0}," +
-                    "\"six_direction\":{" +
-                        "\"up\":{\"name\":\"empty\",\"id\":\"0\",\"distance\":10}," +
-                        "\"down\":{\"name\":\"empty\",\"id\":\"0\",\"distance\":10}," +
-                        "\"front\":{\"name\":\"empty\",\"id\":\"0\",\"distance\":10}," +
-                        "\"back\":{\"name\":\"empty\",\"id\":\"0\",\"distance\":10}," +
-                        "\"left\":{\"name\":\"empty\",\"id\":\"0\",\"distance\":10}," +
-                        "\"right\":{\"name\":\"empty\",\"id\":\"0\",\"distance\":10}" +
-                    "}," +
-                    "\"nearby_voxels\":\"\"," +
-                    "\"pending_plans\":[]," +
-                    "\"last_commands\":[]" +
-                "}" +
-            "}";
-
-            Debug.Log($"[ApiClient] Sending legacy dummy batch session= {testSessionId}\n{json}");
-
-            // 直接发送 JSON 到 Events API（测试用）
-            StartCoroutine(PostEventsRequestRawJson(json, (response, error) =>
-            {
-                if (!string.IsNullOrEmpty(error))
-                {
-                    Debug.LogError($"[ApiClient] Legacy dummy batch send failed: {error}");
-                }
-                else
-                {
-                    Debug.Log($"[ApiClient] Legacy dummy batch sent successfully: {response}");
-                }
-            }));
+            callback?.Invoke(null, "JSON data is empty!");
+            return;
         }
-        catch (Exception e)
-        {
-            Debug.LogError($"[ApiClient] Exception in TestSendDummyBatchLegacy: {e.Message}");
-        }
+        StartCoroutine(PostPermissionRequestRawJson(jsonData, callback));
     }
     #endregion
 
     #region Private Request Methods
 
+    /// <summary>
+    /// 将 EventBatch 中所有 ImageData 的文件转换为 base64
+    /// </summary>
+    private void ConvertImageDataToBase64(EventBatch eventBatch)
+    {
+        if (eventBatch?.events == null) return;
+
+        foreach (var eventData in eventBatch.events)
+        {
+            if (eventData?.payload == null) continue;
+
+            // 根据事件类型处理不同的 payload
+            switch (eventData.type)
+            {
+                case "player_speak":
+                    var playerSpeakPayload = eventData.payload as PlayerSpeakPayload;
+                    if (playerSpeakPayload?.image != null)
+                    {
+                        ConvertSingleImageDataToBase64(playerSpeakPayload.image);
+                    }
+                    break;
+
+                case "agent_continue_plan":
+                    var continuePlanPayload = eventData.payload as AgentContinuePlanPayload;
+                    if (continuePlanPayload?.request_snapshot != null)
+                    {
+                        foreach (var img in continuePlanPayload.request_snapshot)
+                        {
+                            ConvertSingleImageDataToBase64(img);
+                        }
+                    }
+                    break;
+
+                case "agent_perception":
+                    var perceptionPayload = eventData.payload as AgentPerceptionPayload;
+                    if (perceptionPayload?.images != null)
+                    {
+                        foreach (var img in perceptionPayload.images)
+                        {
+                            ConvertSingleImageDataToBase64(img);
+                        }
+                    }
+                    break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 将单个 ImageData 的文件转换为 base64（如果还没有 base64 数据）
+    /// </summary>
+    private void ConvertSingleImageDataToBase64(ImageData imageData)
+    {
+        if (imageData == null) return;
+
+        // 如果已经有 base64 数据，跳过
+        if (!string.IsNullOrEmpty(imageData.base64))
+        {
+            return;
+        }
+
+        // 确定文件路径
+        string filePath = null;
+        
+        if (!string.IsNullOrEmpty(imageData.file_path))
+        {
+            // 优先使用 file_path
+            filePath = imageData.file_path;
+        }
+        else if (!string.IsNullOrEmpty(imageData.file_name))
+        {
+            // 如果只有 file_name，尝试从默认路径查找
+            // 默认路径是 Application.persistentDataPath/Photos
+            string defaultPhotoPath = Path.Combine(Application.persistentDataPath, "Photos");
+            filePath = Path.Combine(defaultPhotoPath, imageData.file_name);
+        }
+
+        // 如果找到了文件路径，尝试读取并转换为 base64
+        if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
+        {
+            try
+            {
+                byte[] fileBytes = File.ReadAllBytes(filePath);
+                imageData.base64 = Convert.ToBase64String(fileBytes);
+                Debug.Log($"Converted image file to base64: {filePath}");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Failed to convert image file to base64: {filePath}, Error: {e.Message}");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"Image file not found: {filePath ?? "null"}");
+        }
+    }
+
     private IEnumerator PostEventsRequestRawJson(string jsonData, ApiResponseCallback callback)
     {
-        Debug.Log($"Sending Events Request (raw): {jsonData}");
+        // 记录 JSON 长度和关键信息（不记录完整 JSON，因为可能太长）
+        int jsonLength = jsonData?.Length ?? 0;
+        Debug.Log($"Sending Events Request - JSON length: {jsonLength} bytes");
+        
+        // 如果 JSON 太长，只记录前 1000 和后 1000 个字符用于调试
+        if (jsonLength > 2000)
+        {
+            string preview = jsonData.Substring(0, Math.Min(1000, jsonLength));
+            string suffix = jsonLength > 1000 ? jsonData.Substring(Math.Max(0, jsonLength - 1000)) : "";
+            Debug.Log($"JSON Preview (first 1000 chars): {preview}...");
+            Debug.Log($"JSON Preview (last 1000 chars): ...{suffix}");
+        }
+        else
+        {
+            Debug.Log($"Sending Events Request (raw): {jsonData}");
+        }
 
         using (UnityWebRequest www = new UnityWebRequest(apiUrl_Events, "POST"))
         {
@@ -236,6 +257,37 @@ public class ApiClient : MonoBehaviour
             {
                 Debug.LogError($"Permission API request failed: {www.error}");
                 Debug.LogError($"Response Code: {www.responseCode}");
+                callback?.Invoke(null, www.error);
+            }
+            else
+            {
+                Debug.Log($"Permission API Response: {www.downloadHandler.text}");
+                callback?.Invoke(www.downloadHandler.text, null);
+            }
+        }
+    }
+
+    private IEnumerator PostPermissionRequestRawJson(string jsonData, ApiResponseCallback callback)
+    {
+        Debug.Log($"Sending Permission Request (raw): {jsonData}");
+
+        using (UnityWebRequest www = new UnityWebRequest(apiUrl_Permission, "POST"))
+        {
+            byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonData);
+            www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            www.downloadHandler = new DownloadHandlerBuffer();
+            www.SetRequestHeader("Content-Type", "application/json");
+
+            yield return www.SendWebRequest();
+
+            if (www.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError($"Permission API request failed: {www.error}");
+                Debug.LogError($"Response Code: {www.responseCode}");
+                if (www.downloadHandler != null && !string.IsNullOrEmpty(www.downloadHandler.text))
+                {
+                    Debug.LogError($"Response Body: {www.downloadHandler.text}");
+                }
                 callback?.Invoke(null, www.error);
             }
             else

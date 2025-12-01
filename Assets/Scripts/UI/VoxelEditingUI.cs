@@ -41,11 +41,7 @@ namespace Voxels
     private SurfaceSpec[] _stableSpecs = new SurfaceSpec[6]; // 已确认/来自def的"稳定态"
     private SurfaceSpec[] _previewSpecs = new SurfaceSpec[6]; // 正在编辑的"暂态"
     
-    // 按钮颜色
-    [SerializeField] private Color selectedColor = new Color(0.055f, 0.9f, 0.21f, 1f);
-    [SerializeField] private Color normalColor = new Color(0.23f, 0.23f, 0.23f, 1f);
-    
-    public event System.Action<string, string, Texture2D[], ushort> OnGlobalConfirmRequested; // 全局确认事件，传递(name, description, faceTextures, voxelId)
+    public event System.Action<string, string, Texture2D[], ushort> OnPlayerGlobalConfirmRequested; // 全局确认事件，传递(name, description, faceTextures, voxelId)
     public event System.Action<ushort> OnDeleteRequested; // 删除事件，传递voxelId
 
     private void Start()
@@ -62,6 +58,9 @@ namespace Voxels
         }
         else
         {
+            // 重新获取addButton引用（VoxelInventoryUI可能已刷新）
+            UpdateAddButtonReference();
+            
             // 重新添加按钮监听器
             if (comfirmBtn != null)
             {
@@ -104,12 +103,22 @@ namespace Voxels
             comfirmBtn = voxelEditingPanel.transform.Find("ComfirmBtn").GetComponent<Button>();
         if (resetBtn == null)
             resetBtn = voxelEditingPanel.transform.Find("ResetBtn").GetComponent<Button>();
-        if (addButton == null)
-            addButton = voxelEditingPanel.transform.Find("AddButton").GetComponent<Button>();
+        // addButton 现在从 VoxelInventoryUI 中获取，不从这里初始化
         if (nameInput == null)
             nameInput = voxelEditingPanel.transform.Find("NameInput").GetComponent<TMP_InputField>();
         if (descriptionInput == null)
             descriptionInput = voxelEditingPanel.transform.Find("DescriptionInput").GetComponent<TMP_InputField>();
+    }
+    
+    /// <summary>
+    /// 从VoxelInventoryUI获取addButton引用
+    /// </summary>
+    private void UpdateAddButtonReference()
+    {
+        if (voxelInventoryUI != null)
+        {
+            addButton = voxelInventoryUI.GetAddButton();
+        }
     }
 
     private void FindReferenceComponents()
@@ -144,6 +153,8 @@ namespace Voxels
         if (voxelInventoryUI != null)
         {
             voxelInventoryUI.OnVoxelTypeSelected += OnVoxelTypeSelected;
+            // 尝试获取addButton引用（如果VoxelInventoryUI已初始化）
+            UpdateAddButtonReference();
         }
     }
     
@@ -160,7 +171,7 @@ namespace Voxels
         if (colorTextureCache == null)
         {
             colorTextureCache = new SimpleColorTextureCache();
-            Debug.Log("[VoxelEditingUI] Created default SimpleColorTextureCache");
+            //Debug.Log("[VoxelEditingUI] Created default SimpleColorTextureCache");
         }
     }
     
@@ -177,11 +188,10 @@ namespace Voxels
             resetBtn.onClick.RemoveAllListeners();
             resetBtn.onClick.AddListener(Reset);
         }
-        if (addButton != null)
-        {
-            addButton.onClick.RemoveAllListeners();
-            addButton.onClick.AddListener(ToggleAddButton);
-        }
+        
+        // addButton的点击事件已经在VoxelInventoryUI的OnAddButtonClicked中处理，
+        // 会直接调用ToggleAddButton，所以这里不需要设置监听器
+        
         if (deleteButton != null)
         {
             deleteButton.onClick.RemoveAllListeners();
@@ -192,7 +202,7 @@ namespace Voxels
     private void InitializeCube3DUIAndColorPickers()
     {
         // 初始化面颜色选择器
-        Debug.Log($"[VoxelEditingUI] Initializing {faceColorPickers.Length} ColorPickers");
+        //Debug.Log($"[VoxelEditingUI] Initializing {faceColorPickers.Length} ColorPickers");
         
         // 验证所有ColorPickerUI组件
         for (int i = 0; i < 6; i++)
@@ -224,7 +234,7 @@ namespace Voxels
         // 显式选择Front面（索引4）作为默认选中面
         SelectFace(4); // Front = 4
         
-        Debug.Log("[VoxelEditingUI] ColorPickers and Cube3DUI initialized and synchronized");
+        //Debug.Log("[VoxelEditingUI] ColorPickers and Cube3DUI initialized and synchronized");
     }
 
     
@@ -294,7 +304,7 @@ namespace Voxels
         // 统一同步所有UI组件
         SyncAllUIComponents();
         
-        Debug.Log($"[VoxelEditingUI] Loaded voxel: {def.displayName}");
+        //Debug.Log($"[VoxelEditingUI] Loaded voxel: {def.displayName}");
     }
     
     /// <summary>
@@ -314,7 +324,7 @@ namespace Voxels
             _previewSpecs[_currentSelectedFace] = _stableSpecs[_currentSelectedFace].DeepCopy();
             // 统一同步所有UI组件
             SyncAllUIComponents();
-            Debug.Log($"[VoxelEditingUI] Rolled back unconfirmed changes for face {_currentSelectedFace}");
+            //Debug.Log($"[VoxelEditingUI] Rolled back unconfirmed changes for face {_currentSelectedFace}");
         }
         
         // 隐藏所有面板
@@ -329,7 +339,7 @@ namespace Voxels
             // 同步颜色选择器到当前预览状态
             faceColorPickers[faceIndex].SetColorSilently(_previewSpecs[faceIndex].baseColor);
             
-            Debug.Log($"[VoxelEditingUI] Selected face {faceIndex}, color set to {_previewSpecs[faceIndex].baseColor}");
+            //Debug.Log($"[VoxelEditingUI] Selected face {faceIndex}, color set to {_previewSpecs[faceIndex].baseColor}");
         }
         else
         {
@@ -350,7 +360,7 @@ namespace Voxels
         // 只更新Cube3DUI预览（ColorPickerUI不需要更新，因为它是事件源）
         ApplyPreviewToCube3D();
         
-        Debug.Log($"[VoxelEditingUI] Face {faceIndex} color changed to {color} (temporary)");
+        //Debug.Log($"[VoxelEditingUI] Face {faceIndex} color changed to {color} (temporary)");
     }
     
     /// <summary>
@@ -410,7 +420,7 @@ namespace Voxels
             }
         }
         
-        Debug.Log($"[VoxelEditingUI] Prepared params for VoxelSystemManager: name='{name}', description='{description}', faceTextures count={faceTextures.Length}");
+        //Debug.Log($"[VoxelEditingUI] Prepared params for VoxelSystemManager: name='{name}', description='{description}', faceTextures count={faceTextures.Length}");
     }
     
     /// <summary>
@@ -473,8 +483,7 @@ namespace Voxels
             comfirmBtn.onClick.RemoveAllListeners();
         if (resetBtn != null)
             resetBtn.onClick.RemoveAllListeners();
-        if (addButton != null)
-            addButton.onClick.RemoveAllListeners();
+        // addButton的监听器由VoxelInventoryUI管理，不需要这里清理
         if (deleteButton != null)
             deleteButton.onClick.RemoveAllListeners();
     }
@@ -485,8 +494,7 @@ namespace Voxels
             comfirmBtn.onClick.RemoveAllListeners();
         if (resetBtn != null)
             resetBtn.onClick.RemoveAllListeners();
-        if (addButton != null)
-            addButton.onClick.RemoveAllListeners();
+        // addButton的监听器由VoxelInventoryUI管理，不需要这里清理
         if (deleteButton != null)
             deleteButton.onClick.RemoveAllListeners();
             
@@ -508,12 +516,6 @@ namespace Voxels
         _isEditingMode = true;
         _editingVoxelId = voxelId;
         _isAddButtonSelected = false;
-
-        // 更新Add按钮状态
-        if (addButton != null)
-        {
-            addButton.image.color = normalColor;
-        }
 
         //显示删除按钮
         if (deleteButton != null)
@@ -543,12 +545,6 @@ namespace Voxels
         _isEditingMode = false;
         _editingVoxelId = 0;
         _isAddButtonSelected = true;
-        
-        // 更新Add按钮状态
-        if (addButton != null)
-        {
-            addButton.image.color = selectedColor;
-        }
         
         nameInput.text = "";
         descriptionInput.text = "";
@@ -596,14 +592,14 @@ namespace Voxels
         {
             // 编辑模式：准备参数并发送事件，传递当前编辑的voxel ID
             PrepareVoxelSystemManagerParams(out string name, out string description, out Texture2D[] faceTextures);
-            OnGlobalConfirmRequested?.Invoke(name, description, faceTextures, _editingVoxelId);
+            OnPlayerGlobalConfirmRequested?.Invoke(name, description, faceTextures, _editingVoxelId);
             SetCreateMode(); // 退出编辑模式
         }
         else
         {
             // 创建模式：准备参数并发送事件，传递0表示新创建
             PrepareVoxelSystemManagerParams(out string name, out string description, out Texture2D[] faceTextures);
-            OnGlobalConfirmRequested?.Invoke(name, description, faceTextures, 0);
+            OnPlayerGlobalConfirmRequested?.Invoke(name, description, faceTextures, 0);
             Reset(); // 重置表单
         }
     }
@@ -632,9 +628,9 @@ namespace Voxels
     }
     
     /// <summary>
-    /// 切换Add按钮状态
+    /// 切换Add按钮状态（公共方法，供VoxelInventoryUI调用）
     /// </summary>
-    private void ToggleAddButton()
+    public void ToggleAddButton()
     {
         _isAddButtonSelected = !_isAddButtonSelected;
         
@@ -672,7 +668,7 @@ namespace Voxels
     /// </summary>
     private void OnVoxelTypeSelected(VoxelDefinition voxelDef)
     {
-        Debug.Log($"[VoxelEditingUI] Voxel selected: {voxelDef.displayName}");
+        //Debug.Log($"[VoxelEditingUI] Voxel selected: {voxelDef.displayName}");
         UpdateEditingStateFromInventory();
     }
     
@@ -807,7 +803,7 @@ namespace Voxels
         if (cube3DUI != null)
         {
             SubscribeToCube3DEvents();
-            Debug.Log("[VoxelEditingUI] Cube3DUI connection ensured");
+            //Debug.Log("[VoxelEditingUI] Cube3DUI connection ensured");
         }
         else
         {
@@ -825,7 +821,7 @@ namespace Voxels
             // 先取消订阅，避免重复订阅
             cube3DUI.OnFaceSelected -= OnCube3DFaceSelected;
             cube3DUI.OnFaceSelected += OnCube3DFaceSelected;
-            Debug.Log("[VoxelEditingUI] Subscribed to Cube3DUI face selection events");
+            //Debug.Log("[VoxelEditingUI] Subscribed to Cube3DUI face selection events");
         }
     }
     
@@ -837,7 +833,7 @@ namespace Voxels
         if (cube3DUI != null)
         {
             cube3DUI.OnFaceSelected -= OnCube3DFaceSelected;
-            Debug.Log("[VoxelEditingUI] Unsubscribed from Cube3DUI face selection events");
+            //Debug.Log("[VoxelEditingUI] Unsubscribed from Cube3DUI face selection events");
         }
     }
     
@@ -846,7 +842,7 @@ namespace Voxels
     /// </summary>
     private void OnCube3DFaceSelected(int faceIndex)
     {
-        Debug.Log($"[VoxelEditingUI] Cube3DUI face selected: {faceIndex}");
+        //Debug.Log($"[VoxelEditingUI] Cube3DUI face selected: {faceIndex}");
         SelectFace(faceIndex);
     }
 

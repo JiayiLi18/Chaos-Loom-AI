@@ -18,6 +18,7 @@ public class PhotoInventoryUI : MonoBehaviour
 
     [Header("Photo Prefab UI")]
     [SerializeField] private GameObject photoPrefab;
+    [SerializeField] private GameObject openCamButtonPrefab; // 拍照按钮预制体
     [SerializeField] private string selectButtonPath = "SelectButton"; // 预制体中按钮的路径
     [SerializeField] private string previewImagePath = "PreviewImage";
     [SerializeField] private string frameImagePath = "SelectButton";//边框颜色
@@ -28,6 +29,7 @@ public class PhotoInventoryUI : MonoBehaviour
     private static string _currentSelectedPhotoPath;
     private Image _currentSelectedFrame;
     private bool _isInitialized = false;
+    private GameObject _openCamButton; // 保存拍照按钮引用
 
     // 暴露当前选中的纹理
     public Texture CurrentTexture { get; private set; }
@@ -84,16 +86,39 @@ public class PhotoInventoryUI : MonoBehaviour
     {
         if (!_isInitialized || photoGrid == null || photoPrefab == null) return;
 
-        // 清除现有的照片
+        // 清除现有的照片（跳过TakePhoto按钮）
         foreach (Transform child in photoGrid)
         {
+            // 检查是否是保存的拍照按钮引用
+            if (child.gameObject == _openCamButton)
+            {
+                continue; // 跳过拍照按钮
+            }
             Destroy(child.gameObject);
+        }
+
+        // 在第一个位置添加拍照按钮（如果不存在）
+        if (openCamButtonPrefab != null)
+        {
+            // 检查是否已经有拍照按钮
+            if (_openCamButton == null)
+            {
+                GameObject takePhotoBtn = Instantiate(openCamButtonPrefab, photoGrid);
+                takePhotoBtn.name = "TakePhotoButton"; // 给一个标识名称
+                _openCamButton = takePhotoBtn; // 保存引用
+                // 设置按钮点击事件
+                Button btn = takePhotoBtn.GetComponent<Button>();
+                if (btn != null)
+                {
+                    btn.onClick.AddListener(OpenPhotoTakingUI);
+                }
+            }
         }
 
         // 确保目录存在
         if (!Directory.Exists(_photoDirectory))
         {
-            Debug.LogWarning("照片目录不存在");
+            Debug.LogWarning("Photo directory does not exist");
             return;
         }
 
@@ -107,6 +132,19 @@ public class PhotoInventoryUI : MonoBehaviour
             LoadPhotoIntoGrid(file);
         }
     }
+    
+    private void OpenPhotoTakingUI()
+    {
+        // 打开拍照UI前，清空当前选择并关闭预览
+        SetPreviewActive(false);
+        // 直接触发打开拍照UI的事件，由RuntimePhotoTaker监听
+        TogglePhotoTakingUIRequested?.Invoke();
+    }
+    
+    // UI按钮点击事件
+    public System.Action TogglePhotoTakingUIRequested;
+    // 关闭拍照UI请求事件（在选择照片时关闭拍照界面）
+    public System.Action ClosePhotoTakingUIRequested;
 
     private void LoadPhotoIntoGrid(string filePath)
     {
@@ -137,13 +175,40 @@ public class PhotoInventoryUI : MonoBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"加载照片失败: {filePath}\n{e.Message}");
+            Debug.LogError($"Failed to load photo: {filePath}\n{e.Message}");
         }
     }
 
     private void SelectPhoto(string filePath, Texture2D tex, Image frameImage)
     {
-        Debug.Log($"SelectPhoto called with path: {filePath}");
+        //Debug.Log($"SelectPhoto called with path: {filePath}");
+        
+        // 若拍照界面打开，请求关闭
+        ClosePhotoTakingUIRequested?.Invoke();
+        
+        // 如果再次点击同一张照片，则作为开关：切换预览面板显示/隐藏
+        if (_currentSelectedPhotoPath == filePath)
+        {
+            bool isPreviewActive = photoPreviewUI != null && photoPreviewUI.activeSelf;
+            // 切换状态
+            SetPreviewActive(!isPreviewActive);
+            
+            // 如果切换为显示，需要恢复当前选择的可视状态
+            if (!isPreviewActive)
+            {
+                _currentSelectedFrame = frameImage;
+                if (previewDisplayImage != null)
+                {
+                    previewDisplayImage.texture = tex;
+                }
+                if (frameImage != null)
+                {
+                    frameImage.color = selectedColor;
+                }
+                CurrentTexture = tex;
+            }
+            return;
+        }
         
         // Reset previous selection if exists
         if (_currentSelectedFrame != null)
@@ -152,7 +217,7 @@ public class PhotoInventoryUI : MonoBehaviour
         }
 
         _currentSelectedPhotoPath = filePath;
-        Debug.Log($"Set _currentSelectedPhotoPath to: {_currentSelectedPhotoPath}");
+        //Debug.Log($"Set _currentSelectedPhotoPath to: {_currentSelectedPhotoPath}");
         _currentSelectedFrame = frameImage;
         
         if (previewDisplayImage != null)
@@ -166,10 +231,10 @@ public class PhotoInventoryUI : MonoBehaviour
 
         // 更新当前纹理
         CurrentTexture = tex;
-        Debug.Log($"Current texture set, null? {CurrentTexture == null}");
+        //Debug.Log($"Current texture set, null? {CurrentTexture == null}");
 
         // 触发选择事件
-        Debug.Log($"Triggering photo selected event with path: {CurrentPhotoPath}");
+        //Debug.Log($"Triggering photo selected event with path: {CurrentPhotoPath}");
         OnPhotoSelected?.Invoke();
 
         SetPreviewActive(true);
@@ -182,7 +247,7 @@ public class PhotoInventoryUI : MonoBehaviour
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);
-                Debug.Log($"照片已删除: {filePath}");
+                Debug.Log($"Photo deleted: {filePath}");
                 
                 // 如果删除的是当前预览的照片，关闭预览
                 if (filePath == _currentSelectedPhotoPath)
@@ -196,14 +261,14 @@ public class PhotoInventoryUI : MonoBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"删除照片失败: {filePath}\n{e.Message}");
+            Debug.LogError($"Failed to delete photo: {filePath}\n{e.Message}");
         }
     }
 
 
     private void SetPreviewActive(bool active)
     {
-        Debug.Log($"SetPreviewActive called with active: {active}");
+        //Debug.Log($"SetPreviewActive called with active: {active}");
         if (photoPreviewUI != null)
         {
             photoPreviewUI.SetActive(active);
@@ -214,7 +279,7 @@ public class PhotoInventoryUI : MonoBehaviour
                     _currentSelectedFrame.color = normalColor;
                     _currentSelectedFrame = null;
                 }
-                Debug.Log("Clearing photo selection state");
+                //Debug.Log("Clearing photo selection state");
                 _currentSelectedPhotoPath = null;
                 if (previewDisplayImage != null)
                 {
@@ -244,5 +309,12 @@ public class PhotoInventoryUI : MonoBehaviour
         {
             closePreviewButton.onClick.RemoveAllListeners();
         }
+        
+        // 清理事件监听
+        TogglePhotoTakingUIRequested = null;
+        ClosePhotoTakingUIRequested = null;
+        
+        // 清理拍照按钮引用
+        _openCamButton = null;
     }
 }
